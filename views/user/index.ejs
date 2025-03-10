@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="navbar.css">
+</head>
+<body>
+   
+    <div class="chat-container">
+        
+        <div class="side-nav">
+            <div class="upperSide">
+                <div class="upperSideTop">
+                <img src="asset/icons8-chatgpt.svg" alt="" class="logo">
+                <span class="brand">mutiGPT</span></img>
+                  
+                  <button class="midbtn">
+                    <img src="asset/bookmark.svg" alt="" class="addbtn" onclick=newChat() />
+                    New Chat
+                  </button>
+                </div>
+                <div class="upperSideBottom">
+                  <button class="query">
+                    <img src="asset/message copy.svg" alt="Query" />
+                    What is Programming?
+                  </button>
+                  <button class="query">
+                    <img src="asset/message copy.svg" alt="Query" />
+                    How to use an API?
+                  </button>
+                </div>
+              </div>
+
+              <div class="lowerSide"></div>
+        </div>
+        <main class="main-content">
+            <%- include("../includes/navbar.ejs") %>
+           <div class="chat-section">
+               <h1>ai chat bot </h1>
+               <div class="ai-chat-box">
+                   <img src="asset/icons8-chatgpt.svg" alt="" id="ai-image" class="ai-image" width="40">
+                   <div class="ai-chat-area">
+                       hello! how can i help you.
+                   </div>
+                </div>
+           </div>
+           
+            <div class="promt-area">
+              <div class="testinput">
+               <input type="text" id="promt" class="user-input" placeholder="Type a message...">
+                 <button id="image" ><img src="img/img.svg" alt="" >
+                  <input type="file" accept="image/*" hidden>
+                 </button>
+             
+                <button type="submit" id="submit" ><img src="asset/send.svg" alt=""></button>
+            </div>
+            </div>
+       </main>
+      
+    </div>
+    <script>
+const promt = document.querySelector("#promt")
+const chatContainer = document.querySelector(".chat-container")
+const mainContent = document.querySelector(".main-content")
+const chatSection = document.querySelector(".chat-section")
+const imageButton = document.querySelector("#image")
+const imgbtn = document.querySelector("#image img")
+const imgbtnInput = document.querySelector("#image input")
+const submitImg = document.getElementById("submit")
+const lowerSide = document.querySelector(".lowerSide")
+const midbtn = document.querySelector(".midbtn")
+
+const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+const API_KEY = "AIzaSyDoCP_bZiOK5M5wTzHcslBbssYmhHLmuOU"; 
+
+const imgsrc = imgbtn.src
+let chatSessionId = null;
+let chatTitle = null;
+let aiResponse = [];
+
+const sessionId = "<%= sessionId %>";
+console.log("Session ID:", sessionId);
+
+let user = {
+    message: null,
+    file:{
+        mime_type:null,
+        data: null,
+    },
+    previousChat: null,
+    title: null
+};
+chathistoryPreviw()
+async function getChatHistory(chatId) {
+    console.log(`/chat-history/${chatId}`)
+    try {
+        // GET request to get chat history
+        const response = await fetch(`/chat-history/${chatId}`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        // const history = await response.json(); // Convert response to JSON
+        // return history; // Return the chat history
+    } catch (err) {
+        console.error("Error fetching chat history:", err);
+    }
+}
+
+async function newChat(){
+        chatSection.innerHTML = ""
+        user.previousChat = null
+        user.message = null
+        user.title = null
+        user.file = {
+            mime_type: null,
+            data: null
+        }
+        promt.value = ""
+        imgbtn.src = imgsrc
+
+        chatSection.innerHTML = `<h1>ai chat bot </h1>
+        <div class="ai-chat-box">
+            <img src="icons/robot-chatbot-icon-sign-free-vector.jpg" alt="" id="ai-image" class="ai-image" width="50">
+            <div class="ai-chat-area">
+                hello! how can i help you.
+            </div>
+         </div>`
+    
+    const newChatId = await getNewChatId();
+    console.log(newChatId)
+}
+
+async function getNewChatId() {
+    try {
+        const response = await fetch("/api/newchat", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+
+        const data = await response.json();
+        if (data) {
+            console.log(data.chatSessionId)
+            return data.chatSessionId;
+        } else {
+            console.error("Failed to fetch new chat id:", data.message);
+        }
+    } catch (error) {
+        console.error("Error in fetch new chat id:", error);
+    }
+}
+
+async function chathistoryPreviw() {
+    try {
+        const chathistory = await chatHistory();
+        lowerSide.innerHTML = ''
+        chathistory.forEach(chat => {
+            if(chat.chats.length === 0) return
+            const item = document.createElement('div');
+            item.className = 'listItems';
+
+            const img = document.createElement('img');
+            img.className = 'listItemImg';
+            img.src = "asset/icons8-history-30.png";
+            item.appendChild(img);
+
+            const span = document.createElement('span');
+            span.textContent = chat.chats.length > 0 ? chat.chats[0].title : "No chat available";
+
+            item.appendChild(span);
+
+            item.onclick = () => getChatHistory(chat.chatSessionId); 
+
+            lowerSide.appendChild(item)
+        });
+    } catch (error) {
+        console.error('Error loading history:', error);
+    }
+}
+async function getOpenAiResponse(context, message, isTitle) {
+    try {
+        const resp = await fetch("/api/openai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ context, message, isTitle, user }),
+        });
+
+        if (!resp.ok) {
+            throw new Error(`HTTP Error: ${resp.status}`);
+        }
+
+        let data = await resp.json();
+
+        if (data.response) {
+            user.file = { data: null, mime_type: null };
+            return data;
+        } else {
+            return data.error || "Unknown error occurred.";
+        }
+    } catch (error) {
+        console.error("OpenAI API Error:", error.message);
+        return "Error fetching response from OpenAI.";
+    }
+}
+
+async function getGiminiResponse(context, message, isTitle) {
+    try {
+       const resp = await fetch("/api/gimini", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            context,
+            message,
+            isTitle,
+            user
+        }),
+    });
+        const data = await resp.json(); 
+        const aidata = data.response.candidates[0].content.parts[0].text
+        user.file.data = null;
+        user.file.mime_type = null;
+
+        return aidata;
+    } catch (error) {
+        return error.message
+    }
+}
+
+async function responseChatBox(aiChatBox, response) {
+    const text = aiChatBox.querySelector(".ai-chat-area")
+    text.innerHTML = response;
+    chatContainer.scrollTo({top:chatContainer.scrollHeight, behavior:"smooth"})
+}
+
+
+
+function createChatBox(html, classes){
+    let Box = document.createElement("div")
+    Box.innerHTML = html
+    Box.classList.add(classes)
+    return Box
+};
+
+async function handleChatResponse(message) {
+    try{
+        let models = document.getElementById("dropdown-menu").querySelectorAll("input")
+        // console.log(models[0].checked)
+        const contextChats = await chatHistory()
+       // Fetch chat history
+        let fullChat = ""; 
+        // console.log(contextChats.length)
+      if(contextChats.length === 0){
+          console.log("No chat history found");
+       }
+       else{
+        for(let i = 0; i < contextChats.length; i++){
+            if(i === 3){
+                i = contextChats.length-1; // Get the last 3 chats
+            }
+            let chats = contextChats[i].chats; // Access the chats array
+            chats.forEach(chat => {
+            fullChat += `User: ${chat.message}\nai: ${chat.response}\n\n`; // Add message and response
+        });
+        }
+    }
+    
+        if(fullChat){
+            fullChat += `# this only for context # read all user and ai chat hestory make
+            relationship between them and give answer to user considering current user as previous user. use this contex if needed.\n`
+        // `{take context from the last chat from these chat and give answer only message after end of this bracket and don't say word like 'from your priviou chat or from your last chat' or from privious context etc like sentence ony answer new promt/message}`
+        }
+        //console.log(fullChat)
+        user.previousChat = fullChat?`${fullChat}`: "";
+        user.message = message;
+        // <img src="/icons/th.jpeg" alt="" id="user-image" class="user-image" width="50">
+        let html = `  
+                <div class="user-chat-area">
+                ${ message}
+                ${user.file.data?`<img src="data:${user.file.mime_type};base64,${user.file.data}" class="choosingImg" />`: ""}
+                </div>`
+            promt.value = ""
+            let userChatBox = createChatBox(html, "user-chat-box")
+            chatSection.appendChild(userChatBox)
+    
+            setTimeout(async () => {
+                // <img src="/icons/robot-chatbot-icon-sign-free-vector.jpg" alt="" id="ai-image" class="ai-image" width="50">
+                let html = `
+                         <div class="ai-chat-area">
+                         <img src="animation/Animation - 1737272179442.gif" alt="loading img" >
+                         
+                         </div>`
+                        //  let aiChatBox = createChatBox(html, "ai-chat-box")
+                        //  chatSection.appendChild(aiChatBox)
+                        //  chatContainer.scrollTo({top:chatContainer.scrollHeight, behavior:"smooth"})
+                         imgbtn.src = imgsrc
+                        
+                        let aidata = models[0].checked ? getGiminiResponse(user.previousChat, message, false) : null;
+                        let openai = models[1].checked ? getOpenAiResponse(fullChat, message, false) : null;
+
+                        const [a1, a2] = await Promise.all([aidata, openai]); // Proper parallel execution
+
+                        if (a1) {
+                            let aiChatBox = createChatBox(html, "ai-chat-box")
+                           chatSection.appendChild(aiChatBox)
+                           chatContainer.scrollTo({top:chatContainer.scrollHeight, behavior:"smooth"})
+                            responseChatBox(aiChatBox, formatResponseToHTML(a1));
+                            if(!user.title){
+                            user.title = await getGiminiResponse(null, aidata, true)
+                            //console.log(user.title)
+                           }
+                        }
+                        if (a2) {
+                            let aiChatBox = createChatBox(html, "ai-chat-box")
+                            chatSection.appendChild(aiChatBox)
+                            chatContainer.scrollTo({top:chatContainer.scrollHeight, behavior:"smooth"})
+                            responseChatBox(aiChatBox, formatResponseToHTML(a2));
+                            if(!user.title){
+                            user.title = await getOpenAiResponse(null, openai, true)
+                            //console.log(user.title)
+                          }
+                        }
+
+                        //console.log("Session ID:", sessionId);
+
+                        // SAVE CHAT
+                        // if(!user.title){
+                        // user.title = await aiResponse(aidata, true)
+                        // console.log(user.title)
+                        // }
+                        const userId = "<%= userdata.userId%>";
+                        const username = "<%= userdata.username %>";
+                        aiResponse = [a1, a2]
+                        await saveChat(userId, username, user.message, aiResponse, user.title);
+                        console.log(sessionId)
+                    
+                        
+             }, 600);
+                   
+    }catch(err){    
+        console.error(err)
+    }
+   
+}
+
+// window.addEventListener("beforeunload", async () => {
+//   await fetch("/api/end-session", { method: "POST", credentials: "include" });
+// });
+window.onload = function() {
+    document.querySelector('.lowerSide').scrollTop = 0;
+};
+midbtn.addEventListener("click", ()=>{
+    newChat()
+})
+
+promt.addEventListener("keydown", (mess) =>{
+    if(mess.key == "Enter"){
+        if(!promt.value) return
+       
+        handleChatResponse(promt.value)
+        imgChangClass("submit")
+    }
+});
+
+imageButton.addEventListener("click", () =>{
+    imageButton.querySelector("input").click()
+})
+
+submitImg.addEventListener("click", ()=>{
+    if(!promt.value) return
+    handleChatResponse(promt.value)
+    imgChangClass("submit")
+})
+imgbtnInput.addEventListener("change", ()=>{
+    const file = imgbtnInput.files[0]
+   if(!file) return
+   let reader = new FileReader()
+   reader.onload = (e)=>{
+    // console.log(e)
+    let base64String = e.target.result.split(",")[1]
+    user.file={
+        mime_type:file.type,
+        data: base64String
+    }
+    imgbtn.src = `data:${user.file.mime_type};base64,${user.file.data}`
+    imgChangClass("upload")
+    
+   }
+   reader.readAsDataURL(file)
+})
+
+function imgChangClass(action) {
+    if (action === "upload") {
+        imgbtn.classList.remove("xchoose");
+        imgbtn.classList.add("xchoosebtn");
+    } else if (action === "submit") {
+        imgbtn.classList.remove("xchoosebtn");
+        imgbtn.classList.add("xchoose");
+    }
+}
+async function saveChat(userId, username, userMessage, aiResponse, title) {
+    //console.log(chatSessionId)
+    try {
+        const response = await fetch("/api/req", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                userId,
+                username,
+                userMessage,
+                aiResponse,
+                title,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP Error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.success) {
+            //console.log("Chat saved successfully chatId:", data.chatId);
+            return data.chatId;
+        } else {
+            console.error("Failed to save chat:", data.message);
+            return null;
+        }
+    } catch (error) {
+        console.error("Error in saveChat:", error);
+        return null;
+    }
+}
+async function chatHistory(){
+    try {
+        const response = await fetch("/api/chat", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+
+        const data = await response.json();
+        if (data) {
+            return data
+        } else {
+            console.error("Failed to fetch chats:", data.message);
+        }
+    } catch (error) {
+        console.error("Error in fetch chats:", error);
+    }
+}
+function formatResponseToHTML(apiResponse) {
+    const lines = apiResponse.split('\n');
+    let htmlContent = [];
+    let inList = false;
+    let inCodeBlock = false;
+    let codeLanguage = '';
+    let codeLines = [];
+
+    // Escape HTML characters to prevent XSS
+    const escapeHtml = (unsafe) => {
+        return unsafe.replace(/[&<>"']/g, (match) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        }[match]));
+    };
+
+    const flushCodeBlock = () => {
+        if (codeLines.length > 0) {
+            const escapedCode = codeLines.map(line => escapeHtml(line)).join('\n');
+            htmlContent.push(`
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-language">${codeLanguage || 'code'}</span>
+                        <button class="copy-button" onclick="copyCode(this)" title="Copy code">
+                            <svg class="copy-icon" viewBox="0 0 24 24" width="16" height="16">
+                                <path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="code-content">
+                        <pre><code class="language-${codeLanguage}">${escapedCode}</code></pre>
+                    </div>
+                </div>
+            `);
+            codeLines = [];
+        }
+    };
+
+    lines.forEach(line => {
+        line = line.trim();
+
+        // Handle code blocks
+        if (line.startsWith('```')) {
+            if (inCodeBlock) {
+                flushCodeBlock();
+                inCodeBlock = false;
+            } else {
+                inCodeBlock = true;
+                codeLanguage = line.replace(/```/, '').trim();
+            }
+            return;
+        }
+
+        if (inCodeBlock) {
+            codeLines.push(line);
+            return;
+        }
+
+        // Handle headings enclosed in ***
+        if (line.startsWith('***') && line.endsWith('***')) {
+            let text = line.replace(/\*\*\*/g, '').trim();
+            htmlContent.push(`<h3>${text}</h3>`);
+        }
+
+        // Handle list items (* or - at start)
+        else if (line.startsWith('* ') || line.startsWith('- ')) {
+            if (!inList) {
+                htmlContent.push('<ul>');
+                inList = true;
+            }
+            let text = line.replace(/^\*\s|^-\s/, '').trim(); // Remove * or - at the start
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Convert **bold**
+            htmlContent.push(`<li>${text}</li>`);
+        }
+
+        // Close the list if a non-list item appears
+        else {
+            if (inList) {
+                htmlContent.push('</li>');
+                inList = false;
+            }
+            htmlContent.push(`<p>${line}</p>`);
+        }
+    });
+
+    // Close any open list at the end
+    if (inList) {
+        htmlContent.push('</li>');
+    }
+
+    // Ensure any open code block is flushed
+    if (inCodeBlock) flushCodeBlock();
+
+    return `<div class="api-response">${htmlContent.join('\n')}</div>`;
+}
+
+// Helper function to copy code to clipboard
+function copyCode(button) {
+    const code = button.closest('.code-container').querySelector('code').innerText;
+    navigator.clipboard.writeText(code).then(() => {
+        button.classList.add('copied');
+        setTimeout(() => button.classList.remove('copied'), 2000);
+    });
+}
+
+    </script>
+    
+</body>
+</html>
