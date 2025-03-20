@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>chat history page</title>
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/navbar.css">    
+</head>
+<body>
+   
+  <div class="chat-container">
+        
+    <div class="side-nav">
+        <div class="upperSide">
+            <div class="upperSideTop">
+            <img src="asset/icons8-chatgpt.svg" alt="" class="logo">
+            <span class="brand">mutiGPT</span></img>
+              
+              <button class="midbtn">
+                <img src="asset/bookmark.svg" alt="" class="addbtn" onclick=newChat() />
+                New Chat
+              </button>
+            </div>
+            <div class="upperSideBottom">
+              <button class="query">
+                <img src="asset/message copy.svg" alt="Query" />
+                What is Programming?
+              </button>
+              <button class="query">
+                <img src="asset/message copy.svg" alt="Query" />
+                How to use an API?
+              </button>
+            </div>
+          </div>
+
+          <div class="lowerSide"></div>
+    </div>
+    <main class="main-content">
+        <%- include("../includes/navbar.ejs") %>
+       <div class="chat-section">
+           <h1>ai chat bot </h1>
+           <div class="ai-chat-box">
+               <img src="asset/icons8-chatgpt.svg" alt="" id="ai-image" class="ai-image" width="40">
+               <div class="ai-chat-area">
+                   hello! how can i help you.
+               </div>
+            </div>
+       </div>
+       
+        <div class="promt-area">
+          <div class="testinput">
+           <input type="text" id="promt" class="user-input" placeholder="Type a message...">
+             <button id="image" ><img src="img/img.svg" alt="" >
+              <input type="file" accept="image/*" hidden>
+             </button>
+         
+            <button type="submit" id="submit" ><img src="asset/send.svg" alt=""></button>
+        </div>
+        </div>
+   </main>
+  
+</div>
+<script>
+const promt = document.querySelector("#promt")
+const chatContainer = document.querySelector(".chat-container")
+const mainContent = document.querySelector(".main-content")
+const chatSection = document.querySelector(".chat-section")
+const imageButton = document.querySelector("#image")
+const imgbtn = document.querySelector("#image img")
+const imgbtnInput = document.querySelector("#image input")
+const submitImg = document.getElementById("submit")
+const lowerSide = document.querySelector(".lowerSide")
+const midbtn = document.querySelector(".midbtn")
+
+let user = {
+    message: null,
+    file:{
+        mime_type:null,
+        data: null,
+    },
+    previousChat: null,
+    title: null
+};
+
+let matchedChat = <%- JSON.stringify(history) %>; 
+getChatHistory(matchedChat)
+chathistoryPreviw()
+
+async function getChatHistory(matchedChat) {
+  try {
+    if (!matchedChat || !matchedChat.chats) {
+      console.error("Chat not found");
+      return;
+    }
+
+    console.log(matchedChat.chats.length); // ✅ Now it works
+
+    let i = 0;
+    while (i < matchedChat.chats.length) {
+      let pChat = matchedChat.chats[i].message;
+      let aiResponseChat = matchedChat.chats[i].response;
+      i++;
+
+      let html1 = `
+        <div class="user-chat-area">
+          ${pChat}
+        </div>`;
+
+      let userChatBox = createChatBox(html1, "user-chat-box");
+      chatSection.appendChild(userChatBox);
+
+      if (aiResponseChat) {
+        const formatResponseHistory = formatResponseToHTML(aiResponseChat);
+        let html2 = `
+          <div class="ai-chat-area">
+            ${formatResponseHistory}
+          </div>`;
+
+        let aiChatBox = createChatBox(html2, "ai-chat-box");
+        chatSection.appendChild(aiChatBox);
+        responseChatBox(aiChatBox, formatResponseHistory);
+      }
+
+      chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: "smooth" });
+    }
+  } catch (err) {
+    console.error("Error in getChatHistory:", err);
+  }
+}
+
+
+async function newChat(){
+        chatSection.innerHTML = ""
+        user.previousChat = null
+        user.message = null
+        user.title = null
+        user.file = {
+            mime_type: null,
+            data: null
+        }
+        promt.value = ""
+        imgbtn.src = imgsrc
+
+        chatSection.innerHTML = `<h1>ai chat bot </h1>
+        <div class="ai-chat-box">
+            <img src="icons/robot-chatbot-icon-sign-free-vector.jpg" alt="" id="ai-image" class="ai-image" width="50">
+            <div class="ai-chat-area">
+                hello! how can i help you.
+            </div>
+         </div>`
+    
+    const newChatId = await getNewChatId();
+    console.log(newChatId)
+}
+
+async function getNewChatId() {
+    try {
+        const response = await fetch("/api/newchat", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+
+        const data = await response.json();
+        if (data) {
+            console.log(data.chatSessionId)
+            return data.chatSessionId;
+        } else {
+            console.error("Failed to fetch new chat id:", data.message);
+        }
+    } catch (error) {
+        console.error("Error in fetch new chat id:", error);
+    }
+}
+
+async function chathistoryPreviw() {
+    try {
+        const chathistory = await chatHistory();
+        lowerSide.innerHTML = ''
+        chathistory.forEach(chat => {
+            if(chat.chats.length === 0) return
+            const item = document.createElement('div');
+            item.className = 'listItems';
+
+            const img = document.createElement('img');
+            img.className = 'listItemImg';
+            img.src = "asset/icons8-history-30.png";
+            item.appendChild(img);
+
+            const span = document.createElement('span');
+            span.textContent = chat.chats.length > 0 ? chat.chats[0].title : "No chat available";
+
+            item.appendChild(span);
+
+            item.onclick = () => getChatHistory(chat.chatSessionId); 
+
+            lowerSide.appendChild(item)
+        });
+    } catch (error) {
+        console.error('Error loading history:', error);
+    }
+}
+ async function getOpenAiResponse(context, message, isTitle) {
+    try {
+        const resp = await fetch("/api/openai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ context, message, isTitle, user }),
+        });
+
+        if (!resp.ok) {
+            throw new Error(`HTTP Error: ${resp.status}`);
+        }
+
+        let data = await resp.json();
+
+        if (data.response) {
+            user.file = { data: null, mime_type: null };
+            return data;
+        } else {
+            return data.error || "Unknown error occurred.";
+        }
+    } catch (error) {
+        console.error("OpenAI API Error:", error.message);
+        return "Error fetching response from OpenAI.";
+    }
+}
+
+async function getGiminiResponse(context, message, isTitle) {
+    try {
+       const resp = await fetch("/api/gimini", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            context,
+            message,
+            isTitle,
+            user
+        }),
+    });
+        const data = await resp.json(); 
+        const aidata = data.response.candidates[0].content.parts[0].text
+        user.file.data = null;
+        user.file.mime_type = null;
+
+        return aidata;
+    } catch (error) {
+        return error.message
+    }
+}
+
+async function responseChatBox(aiChatBox, response) {
+    const text = aiChatBox.querySelector(".ai-chat-area")
+    text.innerHTML = response;
+    chatContainer.scrollTo({top:chatContainer.scrollHeight, behavior:"smooth"})
+}
+
+
+
+function createChatBox(html, classes){
+    let Box = document.createElement("div")
+    Box.innerHTML = html
+    Box.classList.add(classes)
+    return Box
+};
+
+window.onload = function() {
+    document.querySelector('.lowerSide').scrollTop = 0;
+};
+midbtn.addEventListener("click", ()=>{
+    newChat()
+})
+
+
+async function chatHistory(){
+    try {
+        const response = await fetch("/api/chat", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+
+        const data = await response.json();
+        if (data) {
+            return data
+        } else {
+            console.error("Failed to fetch chats:", data.message);
+        }
+    } catch (error) {
+        console.error("Error in fetch chats:", error);
+    }
+}
+function formatResponseToHTML(apiResponse) {
+    const lines = apiResponse.split('\n');
+    let htmlContent = [];
+    let inList = false;
+    let inCodeBlock = false;
+    let codeLanguage = '';
+    let codeLines = [];
+
+    // Escape HTML characters to prevent XSS
+    const escapeHtml = (unsafe) => {
+        return unsafe.replace(/[&<>"']/g, (match) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        }[match]));
+    };
+
+    const flushCodeBlock = () => {
+        if (codeLines.length > 0) {
+            const escapedCode = codeLines.map(line => escapeHtml(line)).join('\n');
+            htmlContent.push(`
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-language">${codeLanguage || 'code'}</span>
+                        <button class="copy-button" onclick="copyCode(this)" title="Copy code">
+                            <svg class="copy-icon" viewBox="0 0 24 24" width="16" height="16">
+                                <path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="code-content">
+                        <pre><code class="language-${codeLanguage}">${escapedCode}</code></pre>
+                    </div>
+                </div>
+            `);
+            codeLines = [];
+        }
+    };
+
+    lines.forEach(line => {
+        line = line.trim();
+
+        // Handle code blocks
+        if (line.startsWith('```')) {
+            if (inCodeBlock) {
+                flushCodeBlock();
+                inCodeBlock = false;
+            } else {
+                inCodeBlock = true;
+                codeLanguage = line.replace(/```/, '').trim();
+            }
+            return;
+        }
+
+        if (inCodeBlock) {
+            codeLines.push(line);
+            return;
+        }
+
+        // Handle headings enclosed in ***
+        if (line.startsWith('***') && line.endsWith('***')) {
+            let text = line.replace(/\*\*\*/g, '').trim();
+            htmlContent.push(`<h3>${text}</h3>`);
+        }
+
+        // Handle list items (* or - at start)
+        else if (line.startsWith('* ') || line.startsWith('- ')) {
+            if (!inList) {
+                htmlContent.push('<ul>');
+                inList = true;
+            }
+            let text = line.replace(/^\*\s|^-\s/, '').trim(); // Remove * or - at the start
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Convert **bold**
+            htmlContent.push(`<li>${text}</li>`);
+        }
+
+        // Close the list if a non-list item appears
+        else {
+            if (inList) {
+                htmlContent.push('</li>');
+                inList = false;
+            }
+            htmlContent.push(`<p>${line}</p>`);
+        }
+    });
+
+    // Close any open list at the end
+    if (inList) {
+        htmlContent.push('</li>');
+    }
+
+    // Ensure any open code block is flushed
+    if (inCodeBlock) flushCodeBlock();
+
+    return `<div class="api-response">${htmlContent.join('\n')}</div>`;
+}
+
+// Helper function to copy code to clipboard
+function copyCode(button) {
+    const code = button.closest('.code-container').querySelector('code').innerText;
+    navigator.clipboard.writeText(code).then(() => {
+        button.classList.add('copied');
+        setTimeout(() => button.classList.remove('copied'), 2000);
+    });
+}
+
+ </script>
+    </body>
+</html>
+
+

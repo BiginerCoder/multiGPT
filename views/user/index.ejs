@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <link rel="stylesheet" href="index.css">
-    <link rel="stylesheet" href="navbar.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/navbar.css">
 </head>
 <body>
    
@@ -94,27 +94,15 @@ let user = {
     title: null
 };
 chathistoryPreviw()
-async function getChatHistory(chatId) {
-    console.log(`/chat-history/${chatId}`)
-    try {
-        // GET request to get chat history
-        const response = await fetch(`/chat-history/${chatId}`, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-            },
-        });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        // const history = await response.json(); // Convert response to JSON
-        // return history; // Return the chat history
-    } catch (err) {
-        console.error("Error fetching chat history:", err);
+async function getChatHistory(item) {
+    const id = item.getAttribute("data-id"); // Get the ID from a data attribute
+    if (id) {
+        window.location.href = `/chat-history/${id}`; // Navigate to the new page
     }
+
 }
+
 
 async function newChat(){
         chatSection.innerHTML = ""
@@ -169,6 +157,7 @@ async function chathistoryPreviw() {
             if(chat.chats.length === 0) return
             const item = document.createElement('div');
             item.className = 'listItems';
+            item.setAttribute('data-id', chat.chatSessionId);
 
             const img = document.createElement('img');
             img.className = 'listItemImg';
@@ -180,7 +169,7 @@ async function chathistoryPreviw() {
 
             item.appendChild(span);
 
-            item.onclick = () => getChatHistory(chat.chatSessionId); 
+            item.onclick = () => getChatHistory(item); 
 
             lowerSide.appendChild(item)
         });
@@ -193,7 +182,7 @@ async function getOpenAiResponse(context, message, isTitle) {
         const resp = await fetch("/api/openai", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ context, message, isTitle, user }),
+            body: JSON.stringify({ context, message, isTitle }),
         });
 
         if (!resp.ok) {
@@ -204,12 +193,38 @@ async function getOpenAiResponse(context, message, isTitle) {
 
         if (data.response) {
             user.file = { data: null, mime_type: null };
-            return data;
+            return data.response;
         } else {
             return data.error || "Unknown error occurred.";
         }
     } catch (error) {
         console.error("OpenAI API Error:", error.message);
+        return "Error fetching response from OpenAI.";
+    }
+}
+async function getDeepSeekResponse(context, message, isTitle) {
+    try {
+        const resp = await fetch("/api/deepseek", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ context, message, isTitle }),
+        });
+
+        if (!resp.ok) {
+            throw new Error(`HTTP Error: ${resp.status}`);
+        }
+
+        let data = await resp.json();
+        console.log(data)
+        if (data.result) {
+            user.file = { data: null, mime_type: null };
+            console.log(data)
+            return data.result;
+        } else {
+            return data.error || "Unknown error occurred.";
+        }
+    } catch (error) {
+        console.error("deepSeek API Error:", error.message);
         return "Error fetching response from OpenAI.";
     }
 }
@@ -239,10 +254,28 @@ async function getGiminiResponse(context, message, isTitle) {
     }
 }
 
-async function responseChatBox(aiChatBox, response) {
-    const text = aiChatBox.querySelector(".ai-chat-area")
-    text.innerHTML = response;
-    chatContainer.scrollTo({top:chatContainer.scrollHeight, behavior:"smooth"})
+async function responseChatBox(aiChatBox, response, model) {
+    const text = aiChatBox.querySelector(".ai-chat-area"); // Select existing chat area
+
+    if (!text) {
+        console.error(`Chat area not found for ${model}`);
+        return;
+    }
+
+    text.innerHTML = ""; // Clear loading animation
+
+    // Add model name heading
+    const heading = document.createElement("h4");
+    heading.textContent = model;
+    text.appendChild(heading);
+
+    // Add AI response
+    const responseDiv = document.createElement("div");
+    responseDiv.innerHTML = response;
+    text.appendChild(responseDiv);
+
+    // Auto-scroll to bottom
+    chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: "smooth" });
 }
 
 
@@ -253,111 +286,191 @@ function createChatBox(html, classes){
     Box.classList.add(classes)
     return Box
 };
-
 async function handleChatResponse(message) {
-    try{
-        let models = document.getElementById("dropdown-menu").querySelectorAll("input")
-        // console.log(models[0].checked)
-        const contextChats = await chatHistory()
-       // Fetch chat history
-        let fullChat = ""; 
-        // console.log(contextChats.length)
-      if(contextChats.length === 0){
-          console.log("No chat history found");
-       }
-       else{
-        for(let i = 0; i < contextChats.length; i++){
-            if(i === 3){
-                i = contextChats.length-1; // Get the last 3 chats
-            }
-            let chats = contextChats[i].chats; // Access the chats array
-            chats.forEach(chat => {
-            fullChat += `User: ${chat.message}\nai: ${chat.response}\n\n`; // Add message and response
-        });
+    try {
+        let models = document.getElementById("dropdown-menu").querySelectorAll("input");
+        const contextChats = await chatHistory();
+
+        // Generate chat context
+        let fullChat = contextChats.slice(-3).map(chatSet =>
+            chatSet.chats.map(chat => `User: ${chat.message}\nai: ${chat.response}\n\n`).join("")
+        ).join("");
+
+        if (fullChat) {
+            fullChat += `# This is for context # Read all user and AI chat history, make 
+            relationships between them, and respond considering the current user as the previous user.\n`;
         }
-    }
-    
-        if(fullChat){
-            fullChat += `# this only for context # read all user and ai chat hestory make
-            relationship between them and give answer to user considering current user as previous user. use this contex if needed.\n`
-        // `{take context from the last chat from these chat and give answer only message after end of this bracket and don't say word like 'from your priviou chat or from your last chat' or from privious context etc like sentence ony answer new promt/message}`
-        }
-        //console.log(fullChat)
-        user.previousChat = fullChat?`${fullChat}`: "";
+
+        user.previousChat = fullChat || "";
         user.message = message;
-        // <img src="/icons/th.jpeg" alt="" id="user-image" class="user-image" width="50">
-        let html = `  
-                <div class="user-chat-area">
-                ${ message}
-                ${user.file.data?`<img src="data:${user.file.mime_type};base64,${user.file.data}" class="choosingImg" />`: ""}
-                </div>`
-            promt.value = ""
-            let userChatBox = createChatBox(html, "user-chat-box")
-            chatSection.appendChild(userChatBox)
-    
-            setTimeout(async () => {
-                // <img src="/icons/robot-chatbot-icon-sign-free-vector.jpg" alt="" id="ai-image" class="ai-image" width="50">
-                let html = `
-                         <div class="ai-chat-area">
-                         <img src="animation/Animation - 1737272179442.gif" alt="loading img" >
-                         
-                         </div>`
-                        //  let aiChatBox = createChatBox(html, "ai-chat-box")
-                        //  chatSection.appendChild(aiChatBox)
-                        //  chatContainer.scrollTo({top:chatContainer.scrollHeight, behavior:"smooth"})
-                         imgbtn.src = imgsrc
-                        
-                        let aidata = models[0].checked ? getGiminiResponse(user.previousChat, message, false) : null;
-                        let openai = models[1].checked ? getOpenAiResponse(fullChat, message, false) : null;
 
-                        const [a1, a2] = await Promise.all([aidata, openai]); // Proper parallel execution
+        let userHtml = `
+            <div class="user-chat-area">
+                ${message}
+                ${user.file?.data ? `<img src="data:${user.file.mime_type};base64,${user.file.data}" class="choosingImg" />` : ""}
+            </div>`;
 
-                        if (a1) {
-                            let aiChatBox = createChatBox(html, "ai-chat-box")
-                           chatSection.appendChild(aiChatBox)
-                           chatContainer.scrollTo({top:chatContainer.scrollHeight, behavior:"smooth"})
-                            responseChatBox(aiChatBox, formatResponseToHTML(a1));
-                            if(!user.title){
-                            user.title = await getGiminiResponse(null, aidata, true)
-                            //console.log(user.title)
-                           }
-                        }
-                        if (a2) {
-                            let aiChatBox = createChatBox(html, "ai-chat-box")
-                            chatSection.appendChild(aiChatBox)
-                            chatContainer.scrollTo({top:chatContainer.scrollHeight, behavior:"smooth"})
-                            responseChatBox(aiChatBox, formatResponseToHTML(a2));
-                            if(!user.title){
-                            user.title = await getOpenAiResponse(null, openai, true)
-                            //console.log(user.title)
-                          }
-                        }
+        promt.value = "";
+        let userChatBox = createChatBox(userHtml, "user-chat-box");
+        chatSection.appendChild(userChatBox);
 
-                        //console.log("Session ID:", sessionId);
+        setTimeout(async () => {
+            let responses = {};
 
-                        // SAVE CHAT
-                        // if(!user.title){
-                        // user.title = await aiResponse(aidata, true)
-                        // console.log(user.title)
-                        // }
-                        const userId = "<%= userdata.userId%>";
-                        const username = "<%= userdata.username %>";
-                        aiResponse = [a1, a2]
-                        await saveChat(userId, username, user.message, aiResponse, user.title);
-                        console.log(sessionId)
-                    
-                        
-             }, 600);
-                   
-    }catch(err){    
-        console.error(err)
+            const loadingHtml = (modelName) => `
+                <div class="ai-chat-area">
+                    <h4>${modelName}</h4>
+                    <img src="animation/Animation - 1737272179442.gif" alt="loading img">
+                </div>`;
+
+            let chatBoxes = {};
+
+            // Create chat boxes for selected models with loading indicators
+            if (models[0]?.checked) {
+                chatBoxes["Gemini"] = createChatBox(loadingHtml("Gemini"), "ai-chat-box");
+                chatSection.appendChild(chatBoxes["Gemini"]);
+            }
+            if (models[1]?.checked) {
+                chatBoxes["OpenAI"] = createChatBox(loadingHtml("OpenAI"), "ai-chat-box");
+                chatSection.appendChild(chatBoxes["OpenAI"]);
+            }
+            if (models[2]?.checked) {
+                chatBoxes["DeepSeek"] = createChatBox(loadingHtml("DeepSeek"), "ai-chat-box");
+                chatSection.appendChild(chatBoxes["DeepSeek"]);
+            }
+
+            // Fetch responses from selected models
+            let [aidata, openai, deepSeek] = await Promise.all([
+                models[0].checked ? getGiminiResponse(fullChat, message, false) : null,
+                models[1].checked ? getOpenAiResponse(fullChat, message, false) : null,
+                models[2].checked ? getDeepSeekResponse(fullChat, message, false) : null
+            ]);
+
+            // Update chat boxes with responses
+            if (aidata) {
+                responseChatBox(chatBoxes["Gemini"], formatResponseToHTML(aidata), 'Gimini');
+                if (!user.title) user.title = await getGiminiResponse(null, aidata, true);
+            }
+            if (openai) {
+                responseChatBox(chatBoxes["OpenAI"], formatResponseToHTML(openai), 'ChatGPT');
+                if (!user.title) user.title = await getOpenAiResponse(null, openai, true);
+            }
+            if (deepSeek) {
+                responseChatBox(chatBoxes["DeepSeek"], formatResponseToHTML(deepSeek), 'deepSeek');
+                console.log(deepSeek)
+                if (!user.title) user.title = await getDeepSeekResponse(null, deepSeek, true);
+            }
+
+            // Save chat
+            const userId = "<%= userdata.userId %>";
+            const username = "<%= userdata.username %>";
+            let aiResponse = [aidata, openai, deepSeek];
+            await saveChat(userId, username, user.message, aiResponse, user.title);
+
+        }, 600);
+    } catch (err) {
+        console.error(err);
     }
-   
 }
 
-// window.addEventListener("beforeunload", async () => {
-//   await fetch("/api/end-session", { method: "POST", credentials: "include" });
-// });
+// async function handleChatResponse(message) {
+//     try{
+//         let models = document.getElementById("dropdown-menu").querySelectorAll("input")
+//         const contextChats = await chatHistory()
+//        let fullChat = ""; 
+//        if(contextChats.length === 0){
+//           console.log("No chat history found");
+//        }
+//        else{
+//         for(let i = 0; i < contextChats.length; i++){
+//             if(i === 3){
+//                 i = contextChats.length-1; // Get the last 3 chats
+//             }
+//             let chats = contextChats[i].chats; // Access the chats array
+//             chats.forEach(chat => {
+//             fullChat +=` User: ${chat.message}\nai: ${chat.response}\n\n`; // Add message and response
+//         });
+//         }
+//     };
+    
+//         if(fullChat){
+//             fullChat += `# this only for context # read all user and ai chat hestory make
+//             relationship between them and give answer to user considering current user as previous user. use this contex if needed.\n`
+//         }
+//         user.previousChat =` fullChat?${fullChat}: ""`;
+//         user.message = message;
+//         let html = `  
+//                 <div class="user-chat-area">
+//                 ${ message}
+//                 ${user.file.data?<img src="data:${user.file.mime_type};base64,${user.file.data}" class="choosingImg" />: ""}
+//                 </div>`
+//             promt.value = ""
+//             let userChatBox = createChatBox(html, "user-chat-box")
+//             chatSection.appendChild(userChatBox)
+    
+//             setTimeout(async () => {
+//                 let html =` <div class="ai-chat-area">
+//                          <img src="animation/Animation - 1737272179442.gif" alt="loading img" >
+                         
+//                          </div>`
+//                          let aiChatBox = createChatBox(html, "ai-chat-box")
+//                           chatSection.appendChild(aiChatBox)
+//                         //  chatContainer.scrollTo({top:chatContainer.scrollHeight, behavior:"smooth"})
+//                          imgbtn.src = imgsrc
+                        
+//                         let aidata = models[0].checked ? getGiminiResponse(user.previousChat, message, false) : null;
+//                         let openai = models[1].checked ? getOpenAiResponse(fullChat, message, false) : null;
+//                         let DeepSeek = models[2].checked ? getDeepSeekResponse(fullChat, message, false) : null;
+
+//                         const [a1, a2, a3] = await Promise.all([aidata, openai, DeepSeek]); // Proper parallel execution
+
+//                         if (a1) {
+                            
+//                            chatSection.appendChild(aiChatBox)
+//                            chatContainer.scrollTo({top:chatContainer.scrollHeight, behavior:"smooth"})
+//                             responseChatBox(aiChatBox, formatResponseToHTML(a1));
+//                             if(!user.title){
+//                             user.title = await getGiminiResponse(null, aidata, true)
+//                            }
+//                         }
+//                         if (a2) {
+//                             let aiChatBox = createChatBox(html, "ai-chat-box")
+//                             chatSection.appendChild(aiChatBox)
+//                             chatContainer.scrollTo({top:chatContainer.scrollHeight, behavior:"smooth"})
+//                             responseChatBox(aiChatBox, formatResponseToHTML(a2.response));
+//                             if(!user.title){
+//                             user.title = await getOpenAiResponse(null, openai, true)
+//                           }
+//                         }
+//                         if (a3) {
+//                             let aiChatBox = createChatBox(html, "ai-chat-box")
+//                             chatSection.appendChild(aiChatBox)
+//                             chatContainer.scrollTo({top:chatContainer.scrollHeight, behavior:"smooth"})
+//                             responseChatBox(aiChatBox, formatResponseToHTML(a3));
+//                             if(!user.title){
+//                             user.title = await getDeepSeekResponse(null, openai, true)
+//                           }
+//                         }
+
+//                         //console.log("Session ID:", sessionId);
+
+//                         // SAVE CHAT
+//                
+//                         aiResponse = [a1, a2, a3]
+//                         await saveChat(userId, username, user.message, aiResponse, user.title);
+//                         console.log(a2)
+                    
+                        
+//              }, 600);
+                   
+//     }catch(err){    
+//         console.error(err)
+//     }
+   
+// }
+window.addEventListener("beforeunload", async () => {
+  await fetch("/api/end-session", { method: "POST", credentials: "include" });
+});
 window.onload = function() {
     document.querySelector('.lowerSide').scrollTop = 0;
 };
@@ -464,6 +577,7 @@ async function chatHistory(){
     }
 }
 function formatResponseToHTML(apiResponse) {
+    
     const lines = apiResponse.split('\n');
     let htmlContent = [];
     let inList = false;

@@ -34,29 +34,23 @@ module.exports.home = async (req, res) => {
 
 module.exports.chatHistory = async (req, res) => {
   try {
-    // const { chatId, userdata } = req.body;
-    // console.log("Chat ID:", chatId);
-    // if (!chatId) {
-    //   return res.status(400).json({ error: "Chat ID is required" });
-    // }
-
-    // console.log("Chat ID:", chatId);
-
-    // const history = await userchat.findOne({ chatSessionId: chatId});
-    // console.log("Chat History:", history);
-    // if (!history) {
-    //   return res.status(404).json({ error: "Chat history not found" });
-    // }
-    const chatId = req.params.chatId;
-    console.log("Chat ID:", chatId);
+    const chatId = req.params.id;
+    console.log("Chat ID123:", chatId);
+    
     const history = await userchat.findOne({ chatSessionId: chatId });
-    console.log("Chat History:", history);
-    res.render("includes/chatHistory.ejs");
+
+    if (!history) {
+      console.error("No chat history found");
+      return res.status(404).json({ error: "Chat history not found" });
+    }
+
+    res.render("user/chatHistory.ejs", { history });
   } catch (error) {
     console.error("Error fetching chat history:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
 
 module.exports.login = (req, res) => {
     res.render("user/login.ejs" );

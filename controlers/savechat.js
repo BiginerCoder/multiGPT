@@ -73,3 +73,11 @@ module.exports.chat = async (req, res) => {
         res.status(500).send("Error retrieving chat history.");
     }
 }
+module.exports.endChat = async (req, res) => {
+    if (req.session) {
+        req.session.chatSessionId = null;
+        res.status(200).json({ message: "Chat session ended" });
+    } else {
+        res.status(400).json({ message: "No active session" });
+    }
+}

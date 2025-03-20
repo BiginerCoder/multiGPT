@@ -1,8 +1,6 @@
 require("dotenv").config();
 const express = require("express");
 const app = express();
-const http = require("http");
-const { Server } = require("ws");
 const path = require("path");
 const session = require("express-session");
 const flash = require("connect-flash");
@@ -12,14 +10,13 @@ const passport = require("passport");
 const LocalStrategy = require("passport-local");
 const main = require("./controlers/main");
 const savechat = require("./controlers/savechat.js");
-const openai = require("./controlers/openai.js");
-const Gemini = require("./controlers/gimini.js");
 const User = require("./models/loginShema");
 const UserDailyChat = require("./models/userChat.js");
 const newChat = require("./controlers/newChatobject.js"); 
 
-const server = http.createServer(app);
-const wss = new Server({ server });
+const openai = require("./controlers/openai.js");
+const Gemini = require("./controlers/gimini.js");
+const deepseek = require("./controlers/deepSeek.js");
 
 // MongoDB Connection
 const mongo_url = 'mongodb+srv://newrahulurmaliya2004:JKMbOceeHVNdR9Ar@cluster0.0lirw.mongodb.net/chatapp?retryWrites=true&w=majority&appName=Cluster0';
@@ -34,6 +31,10 @@ const store = new MongoStore({
   crypto: { secret: process.env.SECRET },
   touchAfter: 24 * 3600,
 });
+// Body Parser Middleware
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
 
 // Express Session
 app.use(
@@ -49,12 +50,8 @@ app.use(
 // Flash Messages
 app.use(flash());
 
-// Body Parser Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
 // Static Files
-app.use(express.static(path.join(__dirname, "/public")));
+app.use(express.static(path.join(__dirname, "public")));
 
 // View Engine
 app.set("view engine", "ejs");
@@ -87,26 +84,7 @@ const requireAuth = (req, res, next) => {
   next();
 };
 
-// WebSocket Handling
-wss.on("connection", (ws) => {
-  console.log("New client connected");
-
-  ws.on("message", async (message) => {
-    console.log("Received message:", message);
-    
-    // Broadcast message to all connected clients
-    wss.clients.forEach(client => {
-      if (client.readyState === 1) {
-        client.send(message);
-      }
-    });
-  });
-
-  ws.on("close", () => {
-    console.log("Client disconnected");
-  });
-});
-
+  
 // Routes
 app.get("/", requireAuth, main.home);
 app.get("/test", async(req, res) => res.render("chatHistory.ejs"));
@@ -129,11 +107,17 @@ app.get("/chat-history/:id", main.chatHistory);
 
 app.post("/api/openai", openai.getCompletion);
 app.post("/api/gimini", Gemini.giminiapi);
+app.post("/api/deepseek", deepseek.deepseekapi);
+
 app.get("/api/chat", requireAuth, savechat.chat);
 app.post("/api/req", savechat.api);
 app.get("/api/newchat", newChat.startNewChat);
-
-server.listen(3000, () => {
+app.post("/api/end-session", savechat.endChat);
+app.get("/cookies", (req, res) => {
+  res.cookie("name", "express").send(req.session);
+}
+);
+app.listen(3000, () => {
   console.log("Server is running on port 3000");
 });
 
