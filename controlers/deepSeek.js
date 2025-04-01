@@ -55,7 +55,7 @@ module.exports.deepseekapi = async (req, res) => {
     const response = await client.path("/chat/completions").post({
       body: {
         messages: [
-          { role: "system", content: `Context: ${context}` },
+          { role: "system", content: `Context: ${context? context: message}` },
           { role: "user", content: isTitle ? chatTitle : message },
         ],
         max_tokens: 1000,

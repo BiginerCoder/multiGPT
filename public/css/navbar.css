@@ -45,3 +45,9 @@
     padding: 10px;
     min-width: 150px;
 }
+.form-check-input{
+    cursor: pointer;
+}
+.form-check-label{
+    cursor: pointer;
+}

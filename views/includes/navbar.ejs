@@ -7,7 +7,7 @@
     </div>
 
     <div class="options">
-        <% if(!userdata.userId) { %>
+        <% if(!userdata) { %>
         <form action="/signup" method="POST">
         <a class="navbar-brand" href="/signup">Sign Up</a>
         </form>

@@ -76,6 +76,7 @@ app.use((req, res, next) => {
   next();
 });
 
+
 // Middleware to Check If User Is Logged In
 const requireAuth = (req, res, next) => {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
@@ -92,8 +93,8 @@ app.get("/login", main.login);
 app.post(
   "/login",
   passport.authenticate("local", {
-    successRedirect: "/",
-    failureRedirect: "/login",
+    // successRedirect: "/",
+    // failureRedirect: "/login",
     successFlash: "Welcome back!",
     failureFlash: "Invalid username or password.",
   }),
@@ -104,10 +105,12 @@ app.post("/signup", main.signupPost);
 app.get("/logout", main.logout);
 
 app.get("/chat-history/:id", main.chatHistory);
+app.delete("/chat-history/delete/:id", main.deleteChatHistory);
 
 app.post("/api/openai", openai.getCompletion);
 app.post("/api/gimini", Gemini.giminiapi);
 app.post("/api/deepseek", deepseek.deepseekapi);
+app.post("/addapikey", main.addApiKey);
 
 app.get("/api/chat", requireAuth, savechat.chat);
 app.post("/api/req", savechat.api);

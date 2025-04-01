@@ -19,7 +19,7 @@ module.exports.getCompletion = async (req, res) => {
             temperature: 0.7
         }, {
             headers: {
-                "Authorization": `Bearer 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`,
+                "Authorization": `Bearer ${API_KEY}`,
                 "Content-Type": "application/json"
             }
         });

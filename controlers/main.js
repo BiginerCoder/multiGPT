@@ -35,8 +35,6 @@ module.exports.home = async (req, res) => {
 module.exports.chatHistory = async (req, res) => {
   try {
     const chatId = req.params.id;
-    console.log("Chat ID123:", chatId);
-    
     const history = await userchat.findOne({ chatSessionId: chatId });
 
     if (!history) {
@@ -44,10 +42,22 @@ module.exports.chatHistory = async (req, res) => {
       return res.status(404).json({ error: "Chat history not found" });
     }
 
-    res.render("user/chatHistory.ejs", { history });
+    res.render("user/chatHistory.ejs", { history: history , userdata: req.session.userId});
   } catch (error) {
     console.error("Error fetching chat history:", error);
     res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+module.exports.deleteChatHistory = async (req, res) => {
+  try {
+    const chatId = req.params.id;
+    const history = await userchat.findOneAndDelete({ chatSessionId: chatId });
+
+    // Optional: Send a success message if you want
+    res.status(200).json({ success: true, message: "Chat history deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting chat history:", error);
+    res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 };
 
@@ -57,7 +67,8 @@ module.exports.login = (req, res) => {
   }
 
 module.exports.loginPost = (req, res) => {
-    res.redirect("/");
+   
+  res.render("user/addApiKeys.ejs", { userdata: req.session.userId });  
   }
 
   
@@ -82,4 +93,31 @@ module.exports.logout = (req, res) => {
       }
       res.redirect("/");
     });
+};
+module.exports.addApiKey = async (req, res) => {
+  req.session.userId = req.user._id;
+
+  const user = await userchat.findOne({ userId: req.user._id });
+  let userdata = null;
+
+  if (!user) {
+      const userchatdata = new userchat();
+      userchatdata.userId = req.user._id;
+      userchatdata.username = req.user.username;
+      userdata = userchatdata;
+  } else {
+      userdata = user;
+  }
+
+  // Convert ObjectId to string for rendering in EJS
+  const dataToRender = {
+      userId: userdata.userId.toString(),
+      username: userdata.username,
+  };
+  const dotenv = {
+    apiKey: process.env.API_KEY,
+    apiurl: process.env.API_URL,
+  }
+  console.log("User Chat Data:", dataToRender.userId);
+  res.render("user/index.ejs", { userdata: dataToRender, dotenv: dotenv });
 };

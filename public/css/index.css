@@ -439,7 +439,6 @@ code {
     font-size: 1.2rem;
     border: 1px solid rgb(98, 98, 98, 1);
     border-radius: 0.5rem;
-    cursor: pointer;
 }
 .listItemImg{
     margin: 0.5rem;
@@ -451,8 +450,16 @@ code {
 .listItems:nth-child(2).listItemImg{
     margin-right: 0.75rem;
 }
-
-
+.deleteIcon{
+    position: absolute;
+    right: 4px;
+    padding: 1rem;
+    cursor: pointer;
+}
+.listItems span{
+    max-width: 77%;
+    cursor: pointer;
+}
 .main-content {
     flex-grow: 1;
     height: 100%;
@@ -479,6 +486,22 @@ code {
     display: none; /* Hide scrollbar */
 }
 
+/* //compare swich */
+.compare-switch{
+    position: relative;
+    right: 1rem;
+    width: 2rem;
+}
+#flexSwitchCheckDefault{
+    display: none;
+    width: 1rem;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; 
+}
 
-
-
+/* addApiKeys form */
+.addBtn{
+    display: flex;
+    justify-content: space-around;
+    gap: 1rem;
+}
