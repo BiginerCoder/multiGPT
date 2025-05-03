@@ -1,0 +1,38 @@
+<% layout("layout/boilerplate.ejs") %>
+<body>
+    <div class="cover" >
+        <%- include("../includes/flash.ejs") %>
+        <div class="signup-container">
+            <div class="signup-header">
+                <h1>welcome to ai chat </h1>
+                <p>Add your api keys🤖</p>
+            </div>
+            <form action="/addapikey" method="POST" class="needs-validation" novalidate>
+                <div class="mb-3">
+                    <label for="Gimini" class="form-label">Gemini</label>
+                    <input type="text" class="form-control" id="Gemini" name="Gemini" placeholder="Enter your Gimini api key" required>
+                    <div class="invalid-feedback">Please enter a valid Gimini api key!</div>
+                </div>
+                <div class="mb-3">
+                    <label for="ChatGPT" class="form-label">ChatGPT</label>
+                    <input type="text" class="form-control" id="ChatGPT" name="ChatGPT" placeholder="Enter your ChatGPT api key" required>
+                    <div class="invalid-feedback">Please enter a valid ChatGPT api key!</div>
+                </div>
+                <div class="mb-3">
+                    <label for="DeepSeek" class="form-label">DeepSeek</label>
+                    <input type="text" class="form-control" id="DeepSeek" name="DeepSeek" placeholder="Enter your DeepSeek api key" required>
+                    <div class="invalid-feedback">Please enter a valid DeepSeek api key!</div>
+                </div>
+                <div class="addBtn">
+                    <button type="submit" class="btn btn-signup btn-primary w-100">add</button>
+                    <button type="submit" class="btn btn-signup btn-primary w-100">demo</button>
+                </div>
+                
+            </form>
+            <div class="text-center mt-3">
+                <p>Already have an account? <a href="/login" class="text-primary">Login</a></p>
+            </div>
+        </div>
+        </div>
+        
+</body>
