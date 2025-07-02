@@ -95,10 +95,10 @@ app.get("/login", main.login);
 app.post(
   "/login",
   passport.authenticate("local", {
-    successFlash: "Welcome back!",
-    failureFlash: "Invalid username or password.",
-  }),
-  main.loginPost
+    failureRedirect: "/login",
+    failureFlash: true,
+    successFlash: main.loginPost,
+    }),main.loginPost
 );
 app.get("/signup", main.signup);
 app.post("/signup", main.signupPost);
