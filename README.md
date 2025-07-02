@@ -4,15 +4,16 @@ MultiGPT is an intelligent and context-aware AI application that allows users to
 🌐 Live Demo
 🔗https://multigpt-xsz8.onrender.com
 ![multi-1](https://github.com/user-attachment![Screenshot 2025-06-13 212257](https://github.com/user-attachments/assets/c87b018c-bfc4-48fb-b71c-6f9318d85931)
-![Screenshot 2025-04-15 204804](https://github.com/user-attachments/assets/f085bbac-2314-4fbf-bd6e-80761f825e5c)
+
 ![multi-2](https://github.com/user-attachments/assets/538e8e8b-8d4a-4eda-9e4b-94828e![multi-3](https://github.com/user-attachments/assets/ba6f11e7-2fd6-48e8-850d-ab4ac7edf944)
-f4283a)![multi-4](https://github.com/user-attachments/assets/9d97e1af-d371-4cf2-8ab6-f95df1065b8b)
+
+![multi-4](https://github.com/user-attachments/assets/9d97e1af-d371-4cf2-8ab6-f95df1065b8b)
+
 ![mutli-5](https://github.com/user-attachments/assets/f86b8aa3-b1cf-4f2f-be79-4101dbe05469)
 
-s/assets/05b23a0e-9462-4185-a431-821b97242f0b)
 
 
-🚀 Features
+##🚀 Features
 Multi-API Querying: Search across multiple APIs simultaneously and get aggregated, side-by-side responses.
 
 Response Comparison: Visually compare outputs from different APIs in real time.
@@ -25,7 +26,8 @@ Responsive Design: Optimized for desktops, tablets, and smartphones.
 
 Clean and Interactive UI: Smooth user experience with dynamic content rendering.
 
-🛠️ Technologies Used
+##🛠️ Technologies Used
+
 Frontend: HTML5, CSS3, JavaScript
 
 Styling: Custom CSS and animations
@@ -38,7 +40,7 @@ API Integration: Supports OpenAI API, DeepSeek API, Gemini API, etc.
 
 Additional: WebSocket for real-time updates (optional)
 
-📁 File Structure
+##📁 File Structure
 bash
 Copy
 Edit
