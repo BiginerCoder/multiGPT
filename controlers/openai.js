@@ -2,7 +2,7 @@
 
 require("dotenv").config();
 const axios = require("axios");
-const API_KEY = process.env.OPENAI_API_KEY;
+//const API_KEY = process.env.OPENAI_API_KEY;
 const URL = "https://api.openai.com/v1/chat/completions"; // Define URL
 
 module.exports.getCompletion = async (req, res) => {
@@ -19,7 +19,7 @@ module.exports.getCompletion = async (req, res) => {
             temperature: 0.7
         }, {
             headers: {
-                "Authorization": `Bearer ${API_KEY}`,
+                "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
                 "Content-Type": "application/json"
             }
         });
@@ -51,7 +51,7 @@ async function generateTitle(response) {
         temperature: 0.5
     }, {
         headers: {
-            "Authorization": `Bearer ${API_KEY}`,
+            "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
             "Content-Type": "application/json"
         }
     });
