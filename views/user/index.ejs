@@ -100,7 +100,7 @@ chathistoryPreviw()
 function getChatHistory(item) {
     const id = item.getAttribute("data-id");
     if (!id) return; // Check if id is valid
-    window.location.href = `/chat-history/1d376b64-0fcb-4981-afbd-b1e8c2dabfd3`;
+    window.location.href = `/chat-history/${id}`;
 }
 async function deleteChatHistory(item) {
     const id = item.getAttribute("data-id");
@@ -351,6 +351,7 @@ async function handleChatResponse(message) {
             let chatBoxes = {};
             imgbtn.src = imgsrc
             let aidata, openai, deepSeek;
+            let giminiCompare, openaiCompare, deepSeekCompare;
             if(models[0].checked && models[1].checked || 
             models[0].checked && models[2].checked || 
             models[1].checked && models[2].checked )
@@ -403,25 +404,23 @@ async function handleChatResponse(message) {
 
                 if (models[0].checked) {
                     const compareMessage = `${comparePrompt} ${message}`;
-                    console.log(compareMessage);
-                    console.log(currentChat);
-
+                   
                     // Create and append chatbox with loading first
                     chatBoxes["Gemini"] = createChatBox(loadingHtml("Gemini"), "ai-chat-box");
                     chatSection.appendChild(chatBoxes["Gemini"]);
 
                     // Await response
-                    const aidataCompare = await getGiminiResponse(currentChat, compareMessage, false);
-                    console.log(aidataCompare);
+                    giminiCompare = await getGiminiResponse(currentChat, compareMessage, false);
+                    console.log(giminiCompare);
 
                     // Show response in UI
-                    responseChatBox(chatBoxes["Gemini"], formatResponseToHTML(aidataCompare), 'Gemini');
+                    responseChatBox(chatBoxes["Gemini"], formatResponseToHTML(giminiCompare), 'Gemini');
 
                 } else if (models[1].checked) {
                     chatBoxes["OpenAI"] = createChatBox(loadingHtml("OpenAI"), "ai-chat-box");
                     chatSection.appendChild(chatBoxes["OpenAI"]);
 
-                    const openaiCompare = await getOpenAiResponse(currentChat, `${comparePrompt} ${message}`, false);
+                    openaiCompare = await getOpenAiResponse(currentChat, `${comparePrompt} ${message}`, false);
                     console.log(openaiCompare);
                     responseChatBox(chatBoxes["OpenAI"], formatResponseToHTML(openaiCompare), 'ChatGPT');
 
@@ -429,7 +428,7 @@ async function handleChatResponse(message) {
                     chatBoxes["DeepSeek"] = createChatBox(loadingHtml("DeepSeek"), "ai-chat-box");
                     chatSection.appendChild(chatBoxes["DeepSeek"]);
 
-                    const deepSeekCompare = await getDeepSeekResponse(currentChat, `${comparePrompt} ${message}`, false);
+                    deepSeekCompare = await getDeepSeekResponse(currentChat, `${comparePrompt} ${message}`, false);
                     console.log(deepSeekCompare);
                     responseChatBox(chatBoxes["DeepSeek"], formatResponseToHTML(deepSeekCompare), 'DeepSeek');
                 }
@@ -462,7 +461,7 @@ async function handleChatResponse(message) {
             // Save chat
             const userId = "<%= userdata.userId %>";
             const username = "<%= userdata.username %>";
-            let aiResponse = [aidata, openai, deepSeek];
+            let aiResponse = [aidata, openai, deepSeek] ? [aidata, openai, deepSeek] : [giminiCompare, openaiCompare, deepSeekCompare];
             await saveChat(userId, username, user.message, aiResponse, user.title);
 
         }, 600);

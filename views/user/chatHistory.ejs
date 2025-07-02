@@ -75,11 +75,16 @@ let user = {
     previousChat: null,
     title: null
 };
-
-const matchedChat = <%- JSON.stringify(historyData) %>;
-console.log(matchedChat)
 chathistoryPreviw()
-getChatHistory(matchedChat)
+const matchedChat = <%- JSON.stringify(historyData) %>
+setTimeout (() => {
+    if (matchedChat && matchedChat.chats) {
+        getChatHistory(matchedChat);
+    } else {
+        console.error("No chat history found.");
+    }
+}, 2000);
+
 async function getChatHistory(matchedChat) {
   try {
     if (!matchedChat || !matchedChat.chats) {
@@ -114,8 +119,8 @@ async function getChatHistory(matchedChat) {
         responseChatBox(aiChatBox, formatResponseHistory);
       }
 
-      chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: "smooth" });
     }
+    chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: "smooth" });
   } catch (err) {
     console.error("Error in getChatHistory:", err);
   }
@@ -265,6 +270,11 @@ function copyCode(button) {
     });
 }
 
+async function fechChatHistory(item) {
+    const id = item.getAttribute("data-id");
+    if (!id) return; // Check if id is valid
+    window.location.href = `/chat-history/${id}`;
+}
 async function deleteChatHistory(item) {
     const id = item.getAttribute("data-id");
 
@@ -356,7 +366,7 @@ async function chathistoryPreviw() {
             deletIcon.src = "/asset/icons8-delete.svg";
             item.appendChild(deletIcon);
 
-            span.onclick = () => getChatHistory(item); 
+            span.onclick = () => fechChatHistory(item); 
             deletIcon.onclick =() => deleteChatHistory(item);
 
             lowerSide.appendChild(item)
@@ -364,7 +374,7 @@ async function chathistoryPreviw() {
     } catch (error) {
         console.error('Error loading history:', error);
     }
-}
+};
 
 
 async function responseChatBox(aiChatBox, response, model) {
