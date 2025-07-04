@@ -96,9 +96,10 @@ app.post(
   "/login",
   passport.authenticate("local", {
     failureRedirect: "/login",
-    failureFlash: true,
-    successFlash: main.loginPost,
-    }),main.loginPost
+    failureFlash: "Invalid username or password.",
+    successRedirect: main.loginPost
+  }),
+  main.loginPost
 );
 app.get("/signup", main.signup);
 app.post("/signup", main.signupPost);
