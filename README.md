@@ -8,8 +8,6 @@ MultiGPT is an intelligent and context-aware AI application that allows users to
 
 ## 📸 Screenshots
 
-![MultiGPT Interface](https://github.com/user-attachments/assets/c87b018c-bfc4-48fb-b71c-6f9318d85931)
-
 ![Response Comparison](https://github.com/user-attachments/assets/538e8e8b-8d4a-4eda-9e4b-94828e)
 
 ![Chat History](https://github.com/user-attachments/assets/ba6f11e7-2fd6-48e8-850d-ab4ac7edf944)
