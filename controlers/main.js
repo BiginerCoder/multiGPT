@@ -2,24 +2,23 @@
 const userchat = require("../models/userChat.js")
 const User = require("../models/loginShema.js");
 const { json } = require("express");
+const { chat } = require("./savechat.js");
 require('dotenv').config()
 
 module.exports.home = async (req, res) => {
   console.log("Session Data:", req.user._id); // Logs all session data to the console
   req.session.userId = req.user._id;
 
-  const user = await userchat.findOne({ userId: req.user._id });
+  const user = await userchat.findOne({ userId: req.user._id }).lean();
   let userdata = null;
-
   if (!user) {
       const userchatdata = new userchat();
       userchatdata.userId = req.user._id;
       userchatdata.username = req.user.username;
-      userdata = userchatdata;
   } else {
       userdata = user;
   }
-
+   req.session.userdata = userdata;
   // Convert ObjectId to string for rendering in EJS
   const dataToRender = {
       userId: userdata.userId.toString(),
@@ -36,6 +35,11 @@ module.exports.home = async (req, res) => {
 module.exports.chatHistory = async (req, res) => {
   try {
     const chatId = req.params.id;
+  //    const dataToRender = {
+  //     userId: userdata.userId.toString(),
+  //     username: userdata.username,
+  //  };
+    //const currchatId = req.session.currchatId;
     const history = await userchat.findOne({ chatSessionId: chatId });
 
     if (!history) {
@@ -43,7 +47,7 @@ module.exports.chatHistory = async (req, res) => {
       return res.status(404).json({ error: "Chat history not found" });
     }
     const serializedHistory = JSON.parse(JSON.stringify(history));
-    res.render("user/chatHistory.ejs",  {historyData: serializedHistory, userdata: req.session.userId});
+    res.render("user/chatHistory.ejs",  {historyData: serializedHistory, userdata: req.session.userdata, currchatId: chatId});
   } catch (error) {
     console.error("Error fetching chat history:", error);
     res.status(500).json({ error: "Internal Server Error" });

@@ -24,6 +24,7 @@
     "flash": "^1.1.0",
     "llamaai": "^1.0.4",
     "mongoose": "^8.9.5",
+    "node-cron": "^4.2.1",
     "openai": "^4.81.0",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",

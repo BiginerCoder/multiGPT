@@ -22,35 +22,53 @@
 
 </div>
 
+
 <script>
-async function models(label = 'Default checkbox') {
+async function saveSelectedModels(value) {
+    console.log("Checkbox toggled:", value);
+    const checkboxes = document.querySelectorAll("#dropdown-menu input[type='checkbox']");
+    const selected = [];
+
+    checkboxes.forEach(cb => {
+        if (cb.checked) selected.push(cb.value);
+    });
+
+    // Send to backend for storing in session
+    await fetch("/save-models", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+         body: JSON.stringify({ selectedmodels: selected })
+    });
+}
+
+// Attach listener to each checkbox dynamically
+function models(label = 'Default checkbox') {
     const dropdown = document.getElementById('dropdown-menu');
-    
-    // Check if checkbox already exists to avoid duplication
     if (document.getElementById(label)) return;
 
     const container = document.createElement('div');
     container.classList.add('form-check');
 
-    // Create the checkbox input
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.value = label;
     checkbox.classList.add('form-check-input');
     checkbox.id = label;
 
-    // Create the label
+    // 📌 When user clicks/toggles checkbox → Update backend session
+    //checkbox.addEventListener('change', saveSelectedModels(checkbox.value));
+
     const labelElement = document.createElement('label');
     labelElement.classList.add('form-check-label');
     labelElement.htmlFor = label;
     labelElement.textContent = label;
 
-    // Append elements to container
     container.appendChild(checkbox);
     container.appendChild(labelElement);
     dropdown.appendChild(container);
 }
-
 // Toggle dropdown visibility and generate checkboxes
 function toggleDropdown() {
     var dropdown = document.getElementById("dropdown-menu");
@@ -61,7 +79,6 @@ function toggleDropdown() {
         models('Gemini');
         models('OpenAI');
         models('DeepSeek');
-        models('CLIP');
     } else {
         dropdown.style.display = "none";
     }
@@ -76,4 +93,6 @@ window.onclick = function(event) {
         }
     }
 };
+console.log("Navbar loaded", );
 </script>
+

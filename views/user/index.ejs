@@ -31,7 +31,8 @@
         <main class="main-content">
             <%- include("../includes/navbar.ejs") %>
            <div class="chat-section">
-               <h1>ai chat bot </h1>
+            
+               <!-- <h1>ai chat bot </h1> -->
                <div class="ai-chat-box">
                    <img src="asset/icons8-chatgpt.svg" alt="" id="ai-image" class="ai-image" width="40">
                    <div class="ai-chat-area">
@@ -48,12 +49,16 @@
                     </div>
                 </div>
               <div class="testinput">
-               <input type="text" id="promt" class="user-input" placeholder="Type a message...">
-                 <button id="image" ><img src="img/img.svg" alt="" >
-                  <input type="file" accept="image/*" hidden>
-                 </button>
-             
-                <button type="submit" id="submit" ><img src="asset/send.svg" alt=""></button>
+                <input type="text" id="promt" class="user-input" placeholder="Type a message..." aria-placeholder="Type a message...">
+
+                <button id="image">
+                    <img src="img/img.svg" alt="">
+                    <input type="file" accept="image/*" hidden>
+                </button>
+
+                <button type="submit" id="submit">
+                    <img src="asset/send.svg" alt="">
+                </button>
             </div>
             </div>
        </main>
@@ -73,18 +78,21 @@ const submitImg = document.getElementById("submit")
 const lowerSide = document.querySelector(".lowerSide")
 const midbtn = document.querySelector(".midbtn")
 const toggle = document.getElementById('flexSwitchCheckDefault');
+   
 
 const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 const API_KEY = "AIzaSyDoCP_bZiOK5M5wTzHcslBbssYmhHLmuOU"; 
+
+const sessionId = "<%= sessionId %>";
+console.log("Session ID:", sessionId);
 
 const imgsrc = imgbtn.src
 let chatSessionId = null;
 let chatTitle = null;
 let aiResponse = [];
-let currentChat = '';
-
-const sessionId = "<%= sessionId %>";
-console.log("Session ID:", sessionId);
+let currentChatId = null;
+let contextChats = null;
+let cachedChatHistory = null;
 
 let user = {
     message: null,
@@ -95,6 +103,7 @@ let user = {
     previousChat: null,
     title: null
 };
+// Load chat history on page load
 chathistoryPreviw()
 
 function getChatHistory(item) {
@@ -121,6 +130,36 @@ async function deleteChatHistory(item) {
     } else {
         alert("Failed to delete chat.");
     }
+}
+async function chatHistory(){
+    try {
+        const response = await fetch("/api/chat", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+
+        const data = await response.json();
+        contextChats = data;
+        if (data) {
+            return data
+        } else {
+            console.error("Failed to fetch chats:", data.message);
+        }
+    } catch (error) {
+        console.error("Error in fetch chats:", error);
+    }
+}
+async function getChatContextOnce() {
+    if (cachedChatHistory) {
+        return cachedChatHistory; // already loaded
+    }
+
+       const contextChats = await chatHistory();
+       cachedChatHistory = contextChats;
+
+    return cachedChatHistory;
 }
 
 
@@ -269,6 +308,7 @@ async function getGiminiResponse(context, message, isTitle) {
         }),
     });
         const data = await resp.json(); 
+        console.log(data)
         const aidata = data.response.candidates[0].content.parts[0].text
         user.file.data = null;
         user.file.mime_type = null;
@@ -309,18 +349,18 @@ function createChatBox(html, classes){
     Box.classList.add(classes)
     return Box
 };
+let RememberingCurrentChat = "";
 
-async function handleChatResponse(message) {
+async function handleChatResponse(message, models) {
     try {
-        
-        let models = document.getElementById("dropdown-menu").querySelectorAll("input");
-        const contextChats = await chatHistory();
-
+        //console.log(models)
+        // models = document.getElementById("dropdown-menu").querySelectorAll("input");
+        contextChats = await getChatContextOnce();
         // Generate chat context
-        let fullChat = contextChats.slice(-3).map(chatSet =>
+        let fullChat = contextChats.slice(0,3).map(chatSet =>
             chatSet.chats.map(chat => `User: ${chat.message}\nai: ${chat.response}\n\n`).join("")
         ).join("");
-
+        fullChat += RememberingCurrentChat;
         if (fullChat) {
             fullChat += `# This is for context # Read all user and AI chat history, make 
             relationships between them, and respond considering the current user as the previous user.\n`;
@@ -352,6 +392,7 @@ async function handleChatResponse(message) {
             imgbtn.src = imgsrc
             let aidata, openai, deepSeek;
             let giminiCompare, openaiCompare, deepSeekCompare;
+           
             if(models[0].checked && models[1].checked || 
             models[0].checked && models[2].checked || 
             models[1].checked && models[2].checked )
@@ -462,13 +503,14 @@ async function handleChatResponse(message) {
             const userId = "<%= userdata.userId %>";
             const username = "<%= userdata.username %>";
             let aiResponse = [aidata, openai, deepSeek] ? [aidata, openai, deepSeek] : [giminiCompare, openaiCompare, deepSeekCompare];
-            await saveChat(userId, username, user.message, aiResponse, user.title);
+            await saveChat(userId, username, user.message, aiResponse, user.title, currentChatId);
 
         }, 600);
     } catch (err) {
         console.error(err);
     }
 }
+
 
 window.addEventListener("beforeunload", async () => {
   await fetch("/api/end-session", { method: "POST", credentials: "include" });
@@ -479,25 +521,31 @@ window.onload = function() {
 midbtn.addEventListener("click", ()=>{
     newChat()
 })
-
+let modelChecked; ;
 promt.addEventListener("keydown", (mess) =>{
+    modelChecked = document.getElementById("dropdown-menu").querySelectorAll("input");
     if(mess.key == "Enter"){
         if(!promt.value) return
-       
-        handleChatResponse(promt.value)
+        console.log("pring models length at line no 502 index.ejs :", models.length)
+    if(modelChecked.length <= 0) return alert("please select at least one model from the dropdown menu!")
+        handleChatResponse(promt.value, modelChecked)
         imgChangClass("submit")
-    }
+    }  
 });
+submitImg.addEventListener("click", ()=>{
+    modelChecked = document.getElementById("dropdown-menu").querySelectorAll("input");
+    if(!promt.value) return
+    if(modelChecked.length <= 0) return alert("please select at least one model from the dropdown menu!")
+        handleChatResponse(promt.value, modelChecked)
+        imgChangClass("submit")
+    
+})
 
 imageButton.addEventListener("click", () =>{
     imageButton.querySelector("input").click()
 })
 
-submitImg.addEventListener("click", ()=>{
-    if(!promt.value) return
-    handleChatResponse(promt.value)
-    imgChangClass("submit")
-})
+
 imgbtnInput.addEventListener("change", ()=>{
     const file = imgbtnInput.files[0]
    if(!file) return
@@ -525,7 +573,7 @@ function imgChangClass(action) {
         imgbtn.classList.add("xchoose");
     }
 }
-async function saveChat(userId, username, userMessage, aiResponse, title) {
+async function saveChat(userId, username, userMessage, aiResponse, title, currentChatId) {
     //console.log(chatSessionId)
     try {
         const response = await fetch("/api/req", {
@@ -539,6 +587,7 @@ async function saveChat(userId, username, userMessage, aiResponse, title) {
                 userMessage,
                 aiResponse,
                 title,
+                currentChatId,
             }),
         });
 
@@ -569,6 +618,7 @@ async function chatHistory(){
         });
 
         const data = await response.json();
+        console.log("chat history data at line no 597 index.ejs :", data)
         if (data) {
             return data
         } else {
@@ -723,5 +773,5 @@ function copyCode(button) {
     });
 }
 
-    </script>
+</script>
     

@@ -110,6 +110,12 @@ body{
         flex: 2;
     }
 }
+.dead-input {
+    opacity: 0.4;            /* looks disabled */
+    pointer-events: none;    /* can't click anything */
+    user-select: none;       /* can't focus or type */
+}
+
 .promt-area input{
     width: 52%;
     height: 75%;
@@ -196,7 +202,7 @@ body{
  }
 
  /* // caht history drop down */
- .dropdown {
+ /* .dropdown {
     display: inline-block;
     position: relative;
     font-size: 1.2rem;
@@ -221,7 +227,7 @@ body{
 }
 .dropdown-content a:hover {
     background-color: #ddd;
-}
+} */
 
 /* //api response formate */
 .api-response {
@@ -480,7 +486,10 @@ code {
     overflow-y: auto;
     overflow-x: hidden;
     position: relative;
-    top: 1.5rem;
+    top: 4rem;
+}
+.chat-section h1{
+    top: 10%;
 }
 .chat-section::-webkit-scrollbar {
     display: none; /* Hide scrollbar */

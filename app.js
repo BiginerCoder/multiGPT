@@ -14,11 +14,17 @@ const savechat = require("./controlers/savechat.js");
 const User = require("./models/loginShema");
 const UserDailyChat = require("./models/userChat.js");
 const newChat = require("./controlers/newChatobject.js"); 
+const cron = require("node-cron");
 
 const openai = require("./controlers/openai.js");
 const Gemini = require("./controlers/gimini.js");
 const deepseek = require("./controlers/deepSeek.js");
-
+ 
+// View Engine
+app.engine("ejs", ejsMate);
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
+ 
 // MongoDB Connection
 const mongo_url =process.env.MONGO_URL;
 mongoose
@@ -36,7 +42,19 @@ const store = new MongoStore({
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// Schedule a cron job to delete empty chats every 1 minute
+cron.schedule("*/15 * * * *", async () => {
+  console.log("Running cron job to delete empty chats...");
+  try {
+    const result = await UserDailyChat.deleteMany({ chats: { $size: 0 } });
 
+    if (result.deletedCount > 0) {
+      console.log(`🗑 Deleted ${result.deletedCount} empty chats`);
+    }
+  } catch (err) {
+    console.error("Error deleting empty chats:", err);
+  }
+});
 // Express Session
 app.use(
   session({
@@ -54,11 +72,6 @@ app.use(flash());
 // Static Files
 app.use(express.static(path.join(__dirname, "public")));
 
-// View Engine
-app.engine("ejs", ejsMate);
-app.set("view engine", "ejs");
-app.set("views", path.join(__dirname, "views"));
-
 // Passport Configuration
 app.use(passport.initialize());
 app.use(passport.session());
@@ -70,12 +83,19 @@ passport.deserializeUser(User.deserializeUser());
 app.use((req, res, next) => {
   if (!req.session.chatSessionId) {
     req.session.chatSessionId = require("uuid").v4();
+    //console.log("New session ID generated:", req.session.chatSessionId);
   }
   res.locals.sessionId = req.session.chatSessionId;
   res.locals.user = req.user || null;
+  //res.locals.currchatId = req.session.chatSessionId;
   res.locals.success = req.flash("success");
   res.locals.error = req.flash("error");
+  
   next();
+});
+app.get("/test", (req, res) => {
+  console.log("Locals in test route:", res.locals);
+  res.send("Check console");
 });
 
 
@@ -87,16 +107,16 @@ const requireAuth = (req, res, next) => {
   next();
 };
 
-  
+
 // Routes
 app.get("/", requireAuth, main.home);
-app.get("/test", async(req, res) => res.render("chatHistory.ejs"));
+//app.get("/test", async(req, res) => res.render("chatHistory.ejs"));
 app.get("/login", main.login);
 app.post(
   "/login",
   passport.authenticate("local", {
     failureRedirect: "/login",
-    failureFlash: "Invalid username or password.",
+    failureFlash: "Invailid username or password.",
     successFlash: "Welcome back!",
     }),
 
@@ -120,8 +140,9 @@ app.get("/api/newchat", newChat.startNewChat);
 app.post("/api/end-session", savechat.endChat);
 app.get("/cookies", (req, res) => {
   res.cookie("name", "express").send(req.session);
-}
-);
-app.listen(3000, () => {
-  console.log("Server is running on port 3000");
+});
+
+
+app.listen(3001, () => {
+  console.log("Server is running on port 3001");
 });
