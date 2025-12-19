@@ -24,7 +24,7 @@ module.exports.getCompletion = async (req, res) => {
             },
             {
                 headers: {
-                    "Authorization": `Bearer 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`,
+                    "Authorization": `Bearer ${process.env.OPENAI_OPENROUTER_KEY}`,
                     "Content-Type": "application/json",
                     "HTTP-Referer": "http://localhost:3000",   // required
                     "X-Title": "Chat Request"                  // optional but recommended
