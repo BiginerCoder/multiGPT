@@ -49,11 +49,11 @@
             </div>
             <div class="testinput">
                <input type="text" id="promt" class="user-input" placeholder="Type a message...">
-                <button id="image" ><img src="/public/img/img.svg" alt="" >
+                <button id="image" ><img src="/img/img.svg" alt="" >
                   <input type="file" accept="image/*" hidden>
                 </button>
              
-            <button type="submit" id="submit" ><img src="/public/asset/send.svg" alt=""></button>
+            <button type="submit" id="submit" ><img src="/asset/send.svg" alt=""></button>
         </div>
         </div>
    </main>
@@ -544,7 +544,7 @@ async function handleChatResponse(message, models) {
             const loadingHtml = (modelName) => `
                 <div class="ai-chat-area">
                     <h4>${modelName}</h4>
-                    <img src="animation/Animation - 1737272179442.gif" alt="loading img">
+                    <img src="<%= '/animation/Animation - 1737272179442.gif' %>" alt="loading img">
                 </div>`;
 
             let chatBoxes = {};
