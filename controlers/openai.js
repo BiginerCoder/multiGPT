@@ -1,7 +1,7 @@
 
 require("dotenv").config();
 const axios = require("axios");
-
+const API_KEY = process.env.OPENAI_OPENROUTER_KEY;  // Use .env for security
 // OpenRouter endpoint
 const URL = "https://openrouter.ai/api/v1/chat/completions";
 
@@ -24,7 +24,7 @@ module.exports.getCompletion = async (req, res) => {
             },
             {
                 headers: {
-                    "Authorization": `Bearer ${process.env.OPENAI_OPENROUTER_KEY}`,
+                    "Authorization": `Bearer ${API_KEY}`,  // Store your API key in .env
                     "Content-Type": "application/json",
                     "HTTP-Referer": "http://localhost:3000",   // required
                     "X-Title": "Chat Request"                  // optional but recommended

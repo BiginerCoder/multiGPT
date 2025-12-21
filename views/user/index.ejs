@@ -308,8 +308,8 @@ async function getGiminiResponse(context, message, isTitle) {
         }),
     });
         const data = await resp.json(); 
-        console.log(data)
-        const aidata = data.response.candidates[0].content.parts[0].text
+        console.log(data.response)
+        const aidata = data.response;
         user.file.data = null;
         user.file.mime_type = null;
 
