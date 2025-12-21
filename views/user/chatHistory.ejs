@@ -83,6 +83,8 @@ let chatSessionId = null;
 let chatTitle = null;
 let aiResponse = [];
 let currentChat = '';
+let contextChats = null;
+let cachedChatHistory = null;
 
 let user = {
     message: null,
@@ -189,6 +191,17 @@ async function getChatHistory(matchedChat) {
     console.error("Error in getChatHistory:", err);
   }
 }
+async function getChatContextOnce() {
+    if (cachedChatHistory) {
+        return cachedChatHistory; // already loaded
+    }
+
+       const contextChats = await chatHistory();
+       cachedChatHistory = contextChats;
+
+    return cachedChatHistory;
+}
+
 
 function formatResponseToHTML(apiResponse) {
     const lines = apiResponse.split('\n');
@@ -425,8 +438,8 @@ async function getGiminiResponse(context, message, isTitle) {
         }),
     });
         const data = await resp.json(); 
-        console.log(data)
-        const aidata = data.response.candidates[0].content.parts[0].text
+        console.log(data.response);
+        const aidata = data.response;
         user.file.data = null;
         user.file.mime_type = null;
 
@@ -494,16 +507,19 @@ async function newChat(){
     const newChatId = await getNewChatId();
     console.log(newChatId)
 }
+
+let RememberingCurrentChat = matchedChat ? matchedChat.chats : '';
 async function handleChatResponse(message, models) {
     try {
         
-        const contextChats = await chatHistory();
-
+        contextChats = await getChatContextOnce();
         // Generate chat context
         let fullChat = contextChats.slice(0,3).map(chatSet =>
             chatSet.chats.map(chat => `User: ${chat.message}\nai: ${chat.response}\n\n`).join("")
         ).join("");
-
+        
+        fullChat += `#this is a current session chat for every respons
+                      first check this,`+RememberingCurrentChat.map(chat => `User: ${chat.message}\nai: ${chat.response}\n\n`).join("");
         if (fullChat) {
             fullChat += `# This is for context # Read all user and AI chat history, make 
             relationships between them, and respond considering the current user as the previous user.\n`;

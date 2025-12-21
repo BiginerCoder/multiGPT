@@ -353,8 +353,6 @@ let RememberingCurrentChat = "";
 
 async function handleChatResponse(message, models) {
     try {
-        //console.log(models)
-        // models = document.getElementById("dropdown-menu").querySelectorAll("input");
         contextChats = await getChatContextOnce();
         // Generate chat context
         let fullChat = contextChats.slice(0,3).map(chatSet =>
