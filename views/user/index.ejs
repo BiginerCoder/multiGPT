@@ -78,6 +78,7 @@ const submitImg = document.getElementById("submit")
 const lowerSide = document.querySelector(".lowerSide")
 const midbtn = document.querySelector(".midbtn")
 const toggle = document.getElementById('flexSwitchCheckDefault');
+const queryButtons = document.querySelectorAll('.query');
    
 
 const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
@@ -175,9 +176,9 @@ async function newChat(){
         promt.value = ""
         imgbtn.src = imgsrc
 
-        chatSection.innerHTML = `<h1>ai chat bot </h1>
+        chatSection.innerHTML = `
         <div class="ai-chat-box">
-            <img src="icons/robot-chatbot-icon-sign-free-vector.jpg" alt="" id="ai-image" class="ai-image" width="50">
+            <img src="asset/icons8-chatgpt.svg" alt="" id="ai-image" class="ai-image" width="50">
             <div class="ai-chat-area">
                 hello! how can i help you.
             </div>
@@ -308,8 +309,8 @@ async function getGiminiResponse(context, message, isTitle) {
         }),
     });
         const data = await resp.json(); 
-        console.log(data)
-        const aidata = data.response.candidates[0].content.parts[0].text
+        console.log(data.response)
+        const aidata = data.response;
         user.file.data = null;
         user.file.mime_type = null;
 
@@ -353,8 +354,6 @@ let RememberingCurrentChat = "";
 
 async function handleChatResponse(message, models) {
     try {
-        //console.log(models)
-        // models = document.getElementById("dropdown-menu").querySelectorAll("input");
         contextChats = await getChatContextOnce();
         // Generate chat context
         let fullChat = contextChats.slice(0,3).map(chatSet =>
@@ -545,7 +544,6 @@ imageButton.addEventListener("click", () =>{
     imageButton.querySelector("input").click()
 })
 
-
 imgbtnInput.addEventListener("change", ()=>{
     const file = imgbtnInput.files[0]
    if(!file) return
@@ -563,6 +561,17 @@ imgbtnInput.addEventListener("change", ()=>{
    }
    reader.readAsDataURL(file)
 })
+
+queryButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        const queryText = button.textContent.trim();
+        promt.value = queryText;
+        modelChecked = document.getElementById("dropdown-menu").querySelectorAll("input");
+        if(modelChecked.length <= 0) return alert("please select at least one model from the dropdown menu!")
+        handleChatResponse(promt.value, modelChecked)
+        imgChangClass("submit")
+    });
+});
 
 function imgChangClass(action) {
     if (action === "upload") {
