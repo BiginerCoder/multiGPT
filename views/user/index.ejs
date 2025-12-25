@@ -78,6 +78,7 @@ const submitImg = document.getElementById("submit")
 const lowerSide = document.querySelector(".lowerSide")
 const midbtn = document.querySelector(".midbtn")
 const toggle = document.getElementById('flexSwitchCheckDefault');
+const queryButtons = document.querySelectorAll('.query');
    
 
 const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
@@ -543,7 +544,6 @@ imageButton.addEventListener("click", () =>{
     imageButton.querySelector("input").click()
 })
 
-
 imgbtnInput.addEventListener("change", ()=>{
     const file = imgbtnInput.files[0]
    if(!file) return
@@ -561,6 +561,17 @@ imgbtnInput.addEventListener("change", ()=>{
    }
    reader.readAsDataURL(file)
 })
+
+queryButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        const queryText = button.textContent.trim();
+        promt.value = queryText;
+        modelChecked = document.getElementById("dropdown-menu").querySelectorAll("input");
+        if(modelChecked.length <= 0) return alert("please select at least one model from the dropdown menu!")
+        handleChatResponse(promt.value, modelChecked)
+        imgChangClass("submit")
+    });
+});
 
 function imgChangClass(action) {
     if (action === "upload") {

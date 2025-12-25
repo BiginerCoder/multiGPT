@@ -417,12 +417,19 @@ code {
     margin: 0.8rem auto;
     border-radius: 0.5rem;
     border: 1px solid rgb(98, 98, 98, 1)
+
+}
+.query:hover{
+    box-shadow: 1px 1px 5px 0px rgba(0,0,0,0.3);
+    cursor: pointer;
 }
 .query img {
     margin-left: 1.2rem;
     object-fit: cover;
     height: 1.5rem;
+    
 }
+
 .lowerSide {
     padding: 1rem;
     max-height: 300px; /* Adjust height as needed */
