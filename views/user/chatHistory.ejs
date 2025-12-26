@@ -105,46 +105,7 @@ setTimeout (() => {
     }
 }, 2000);
 
-// async function getChatHistory(matchedChat) {
-//   try {
-//     if (!matchedChat || !matchedChat.chats) {
-//       console.error("Chat not found");
-//       return;
-//     }
-//     console.log(matchedChat.chats.length); // ✅ Now it works
 
-//     let i = 0;
-//     while (i < matchedChat.chats.length) {
-//       let pChat = matchedChat.chats[i].message;
-//       let aiResponseChat = matchedChat.chats[i].response;
-//       i++;
-
-//       let html1 = `
-//         <div class="user-chat-area">
-//           ${pChat}
-//         </div>`;
-
-//       let userChatBox = createChatBox(html1, "user-chat-box");
-//       chatSection.appendChild(userChatBox);
-
-//       if (aiResponseChat) {
-//         const formatResponseHistory = formatResponseToHTML(aiResponseChat);
-//         let html2 = `
-//           <div class="ai-chat-area">
-//             ${formatResponseHistory}
-//           </div>`;
-
-//         let aiChatBox = createChatBox(html2, "ai-chat-box");
-//         chatSection.appendChild(aiChatBox);
-//         responseChatBox(aiChatBox, formatResponseHistory);
-//       }
-
-//     }
-//     chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: "smooth" });
-//   } catch (err) {
-//     console.error("Error in getChatHistory:", err);
-//   }
-// }
 async function getChatHistory(matchedChat) {
   try {
     if (!matchedChat?.chats) {
