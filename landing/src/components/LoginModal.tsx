@@ -8,36 +8,39 @@ interface LoginModalProps {
 }
 
 export default function LoginModal({ isOpen, onClose, onSwitchToSignup }: LoginModalProps) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  setError("");
+    e.preventDefault();
+    setLoading(true);
+    setError('');
 
-  console.log("Submitting login:", { email, password });
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username: email, password }),
+      });
 
-  const res = await fetch("/login", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  credentials: "include",
-  body: JSON.stringify({ email, password }),
-});
+      const data = await res.json();
 
-//const data = await res.json();
-console.log("Login response at loginModel at line no 33:", res);
-// if (!res.ok) {
-//   throw new Error(data.message);
-// }
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Login failed. Please try again.');
+      }
 
-//window.location.href = data.successReturnToOrRedirect;
-  setLoading(false);
-};
+      window.location.href = data.redirectTo || '/multiGPT';
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -58,15 +61,14 @@ console.log("Login response at loginModel at line no 33:", res);
               Email
             </label>
             <input
-            type="email"
-            id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg ..."
-            placeholder="you@example.com"
-            required
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              placeholder="you@example.com"
+              required
             />
-            
           </div>
 
           <div>
@@ -78,45 +80,26 @@ console.log("Login response at loginModel at line no 33:", res);
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg ..."
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
               placeholder="Enter your password"
               required
             />
-
           </div>
 
-          <div className="flex items-center justify-between">
-            <label className="flex items-center">
-              <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-              <span className="ml-2 text-sm text-gray-600">Remember me</span>
-            </label>
-            <a href="#" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-              Forgot password?
-            </a>
-          </div>
-
-          {error && (
-            <p className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-              {error}
-            </p>
-          )}
+          {error && <p className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">{error}</p>}
 
           <button
             type="submit"
             disabled={loading}
             className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-60"
           >
-            {loading ? "Signing in..." : "Sign in"}
+            {loading ? 'Signing in...' : 'Sign in'}
           </button>
-
         </form>
 
         <p className="mt-6 text-center text-gray-600">
           Don't have an account?{' '}
-          <button
-            onClick={onSwitchToSignup}
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
+          <button onClick={onSwitchToSignup} className="text-blue-600 hover:text-blue-700 font-medium">
             Sign up
           </button>
         </p>
