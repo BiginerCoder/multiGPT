@@ -28,9 +28,7 @@ function App() {
                 Sign in
               </button> */}
               <button
-                onClick={() => {
-                  window.location.href = "/login";
-                }}
+                onClick={() => setShowLogin(true)}
                 className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium transition-colors"
               >
                 Sign In
@@ -43,9 +41,7 @@ function App() {
                 Get started
               </button> */}
               <button
-                onClick={() => {
-                  window.location.href = "/signup";
-                }}
+                onClick={() => setShowSignup(true)}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg"
               >
                 Get Started
@@ -217,6 +213,7 @@ function App() {
           setShowLogin(true);
         }}
       />
+
     </div>
   );
 }

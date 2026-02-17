@@ -72,6 +72,11 @@ module.exports.loginPost = (req, res) => {
   }
 
   
+
+module.exports.addApiPage = (req, res) => {
+  res.render("user/addApiKeys.ejs", { userdata: req.user?._id || null });
+};
+
 module.exports.signup = (req, res) =>{
     res.render("user/signup.ejs")
   }

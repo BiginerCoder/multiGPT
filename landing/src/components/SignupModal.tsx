@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { useState } from 'react';
 
 interface SignupModalProps {
   isOpen: boolean;
@@ -7,11 +8,39 @@ interface SignupModalProps {
 }
 
 export default function SignupModal({ isOpen, onClose, onSwitchToLogin }: SignupModalProps) {
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Signup submitted');
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Signup failed.');
+      }
+
+      window.location.href = data.redirectTo || '/multiGPT';
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Signup failed.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -30,13 +59,15 @@ export default function SignupModal({ isOpen, onClose, onSwitchToLogin }: Signup
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-              Full name
+              Username
             </label>
             <input
               type="text"
               id="name"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              placeholder="John Doe"
+              placeholder="john_doe"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
             />
           </div>
@@ -50,6 +81,8 @@ export default function SignupModal({ isOpen, onClose, onSwitchToLogin }: Signup
               id="signup-email"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
               placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
@@ -63,43 +96,26 @@ export default function SignupModal({ isOpen, onClose, onSwitchToLogin }: Signup
               id="signup-password"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
               placeholder="Create a strong password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
 
-          <div className="flex items-start">
-            <input
-              type="checkbox"
-              id="terms"
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-1"
-              required
-            />
-            <label htmlFor="terms" className="ml-2 text-sm text-gray-600">
-              I agree to the{' '}
-              <a href="#" className="text-blue-600 hover:text-blue-700">
-                Terms of Service
-              </a>{' '}
-              and{' '}
-              <a href="#" className="text-blue-600 hover:text-blue-700">
-                Privacy Policy
-              </a>
-            </label>
-          </div>
+          {error && <p className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">{error}</p>}
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl disabled:opacity-60"
           >
-            Create account
+            {loading ? 'Creating account...' : 'Create account'}
           </button>
         </form>
 
         <p className="mt-6 text-center text-gray-600">
           Already have an account?{' '}
-          <button
-            onClick={onSwitchToLogin}
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
+          <button onClick={onSwitchToLogin} className="text-blue-600 hover:text-blue-700 font-medium">
             Sign in
           </button>
         </p>
