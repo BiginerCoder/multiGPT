@@ -15,6 +15,7 @@ const User = require("./models/loginShema");
 const UserDailyChat = require("./models/userChat.js");
 const newChat = require("./controlers/newChatobject.js"); 
 const cron = require("node-cron");
+const cors = require("cors");
 
 const openai = require("./controlers/openai.js");
 const Gemini = require("./controlers/gimini.js");
@@ -24,7 +25,7 @@ const deepseek = require("./controlers/deepSeek.js");
 app.engine("ejs", ejsMate);
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
- 
+
 // MongoDB Connection
 const mongo_url =process.env.MONGO_URL;
 mongoose
@@ -62,7 +63,7 @@ app.use(
     secret: process.env.SECRET || "keyboard cat",
     resave: false,
     saveUninitialized: true,
-    cookie: { maxAge: 6 * 24 * 60 * 60 * 1000, httpOnly: true },
+    cookie: { maxAge: 6 * 24 * 60 * 60 * 1000, httpOnly: true , sameSite: 'lax'},
   })
 );
 
@@ -72,12 +73,29 @@ app.use(flash());
 // Static Files
 app.use(express.static(path.join(__dirname, "public")));
 
+// react landing page
+app.use(express.static(path.join(__dirname, "landing/dist")));
+
+// node and react run on different ports
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true
+}));
+
 // Passport Configuration
 app.use(passport.initialize());
 app.use(passport.session());
 passport.use(new LocalStrategy(User.authenticate()));
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
+
+// Middleware to Check If User Is Logged In
+const requireAuth = (req, res, next) => {
+  if (req.isAuthenticated && !req.isAuthenticated()) {
+    return res.redirect("/");
+  }
+  next();
+};
 
 // Global Middleware
 app.use((req, res, next) => {
@@ -98,30 +116,41 @@ app.get("/test", (req, res) => {
   res.send("Check console");
 });
 
-
-// Middleware to Check If User Is Logged In
-const requireAuth = (req, res, next) => {
-  if (!req.isAuthenticated || !req.isAuthenticated()) {
-    return res.redirect("/login");
-  }
-  next();
-};
-
-
 // Routes
-app.get("/", requireAuth, main.home);
+
+//app.get("/", requireAuth, main.home);
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "landing/dist/index.html"));
+});
+
 //app.get("/test", async(req, res) => res.render("chatHistory.ejs"));
 app.get("/login", main.login);
 app.post(
   "/login",
   passport.authenticate("local", {
     failureRedirect: "/login",
+    success: true,
     failureFlash: "Invailid username or password.",
     successFlash: "Welcome back!",
     }),
-
   main.loginPost
 );
+// react auth recognizer
+app.get("/api/check-auth", (req, res) => {
+  if (req.isAuthenticated && req.isAuthenticated()) {
+    return res.json({
+      authenticated: true,
+      user: {
+        id: req.user._id,
+        username: req.user.username,
+      },
+    });
+  }
+
+  res.json({ authenticated: false });
+});
+
+
 app.get("/signup", main.signup);
 app.post("/signup", main.signupPost);
 app.get("/logout", main.logout);
@@ -132,7 +161,9 @@ app.delete("/chat-history/delete/:id", main.deleteChatHistory);
 app.post("/api/openai", openai.getCompletion);
 app.post("/api/gimini", Gemini.giminiapi);
 app.post("/api/deepseek", deepseek.deepseekapi);
-app.post("/addapikey", main.addApiKey);
+app.get("/multiGPT", requireAuth, main.home);
+app.post("/addapikey", requireAuth, main.addApiKey);
+
 
 app.get("/api/chat", requireAuth, savechat.chat);
 app.post("/api/req", savechat.api);

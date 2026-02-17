@@ -1,5 +1,6 @@
 <% layout("layout/boilerplate.ejs") %>
-
+ 
+   
    <body>
     <div class="chat-container">
         
@@ -47,6 +48,7 @@
                       <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault">
                       <label class="form-check-label" for="flexSwitchCheckDefault"></label>
                     </div>
+                    
                 </div>
               <div class="testinput">
                 <input type="text" id="promt" class="user-input" placeholder="Type a message..." aria-placeholder="Type a message...">
@@ -61,6 +63,7 @@
                 </button>
             </div>
             </div>
+
        </main>
       
     </div>
@@ -79,7 +82,6 @@ const lowerSide = document.querySelector(".lowerSide")
 const midbtn = document.querySelector(".midbtn")
 const toggle = document.getElementById('flexSwitchCheckDefault');
 const queryButtons = document.querySelectorAll('.query');
-   
 
 const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 const API_KEY = "AIzaSyDoCP_bZiOK5M5wTzHcslBbssYmhHLmuOU"; 
@@ -106,7 +108,6 @@ let user = {
 };
 // Load chat history on page load
 chathistoryPreviw()
-
 function getChatHistory(item) {
     const id = item.getAttribute("data-id");
     if (!id) return; // Check if id is valid
@@ -152,6 +153,7 @@ async function chatHistory(){
         console.error("Error in fetch chats:", error);
     }
 }
+
 async function getChatContextOnce() {
     if (cachedChatHistory) {
         return cachedChatHistory; // already loaded
@@ -212,6 +214,7 @@ async function getNewChatId() {
 async function chathistoryPreviw() {
     try {
         const chathistory = await chatHistory();
+        //console.log(chathistory);
         lowerSide.innerHTML = ''
         chathistory.forEach(chat => {
             if(chat.chats.length === 0) return
@@ -438,6 +441,21 @@ async function handleChatResponse(message, models) {
             currentChat = `promt:${user.message}\nreponses\nGimini:${aidata?aidata:null}\nopenai: ${openai?openai:null}\ndeepSeek: ${deepSeek?deepSeek:null}`;
             }
             else{
+                // show popup when toggle is hovered
+                function rerenderInput(newPlaceholder) {
+                const wrapper = document.getElementById("promt").parentNode;
+
+                wrapper.innerHTML = `
+                    <input
+                    type="text"
+                    id="promt"
+                    class="user-input"
+                    placeholder="${newPlaceholder}"
+                    autofocus
+                    />
+                `;
+                }
+
                 let comparePrompt = `compare this different ai responses in context based on`;
                 userInput.ariaPlaceholder = "compare this different ai responses based on...";
                 console.log("Switch is ON");
@@ -473,32 +491,7 @@ async function handleChatResponse(message, models) {
                     responseChatBox(chatBoxes["DeepSeek"], formatResponseToHTML(deepSeekCompare), 'DeepSeek');
                 }
             }
-            // let comparePrompt = `compare this different ai responses based on`;
-            // userInput.ariaPlaceholder = "compare this different ai responses based on..."
-            // console.log("Switch is ON");
-
-            // if (models[0].checked) {
-            //     let mess = `${comparePrompt} ${message}`;
-            //     console.log(mess);
-            //     console.log(currentChat);
-            //     let aidataCompare = getGiminiResponse(`${currentChat}`, `${comparePrompt} ${message}`, false);
-            //     console.log(aidataCompare);
-            //     chatBoxes["Gemini"] = createChatBox(loadingHtml("Gemini"), "ai-chat-box");
-            //     chatSection.appendChild(chatBoxes["Gemini"]);
-            //     responseChatBox(chatBoxes["Gemini"], aidataCompare, 'Gimini');
-            //     // console.log(aidataCompare);
-            //     // console.log(aidataCompare.Promise.PromiseResult);
-            // }
-            // else if (models[1].checked) {
-            //     let openaiCompare = getOpenAiResponse(currentChat, `${comparePrompt} ${message}`, false);
-            //     console.log(openaiCompare);
-            // }
-            // else if (models[2].checked) {
-            //     let deepSeekCompare = getDeepSeekResponse(currentChat, `${comparePrompt} ${message}`, false);
-            //     console.log(deepSeekCompare);
-            // }
-            // }
-            // Save chat
+           
             const userId = "<%= userdata.userId %>";
             const username = "<%= userdata.username %>";
             let aiResponse = [aidata, openai, deepSeek] ? [aidata, openai, deepSeek] : [giminiCompare, openaiCompare, deepSeekCompare];

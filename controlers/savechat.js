@@ -168,7 +168,7 @@ module.exports.api = async (req, res) => {
 module.exports.chat = async (req, res) => {
     try {
         const userId = req.user._id; // Replace with actual user ID from session or passport
-        const userChat = await userchat.find({ userId }).sort({ date: -1 }); // sort by newest first, limit to last 5 if needed
+        const userChat = await userchat.find({ userId }).sort({ date: -1 }).lean(); // sort by newest first, limit to last 5 if needed
         console.log(userchat)
         res.json(userChat);
     } catch (err) {
@@ -176,6 +176,7 @@ module.exports.chat = async (req, res) => {
         res.status(500).send("Error retrieving chat history.");
     }
 }
+
 module.exports.endChat = async (req, res) => {
     if (req.session) {
         req.session.chatSessionId = null;

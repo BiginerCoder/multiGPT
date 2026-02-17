@@ -35,11 +35,6 @@ module.exports.home = async (req, res) => {
 module.exports.chatHistory = async (req, res) => {
   try {
     const chatId = req.params.id;
-  //    const dataToRender = {
-  //     userId: userdata.userId.toString(),
-  //     username: userdata.username,
-  //  };
-    //const currchatId = req.session.currchatId;
     const history = await userchat.findOne({ chatSessionId: chatId });
 
     if (!history) {
@@ -113,7 +108,7 @@ module.exports.addApiKey = async (req, res) => {
   } else {
       userdata = user;
   }
-
+  req.session.userdata = userdata;
   // Convert ObjectId to string for rendering in EJS
   const dataToRender = {
       userId: userdata.userId.toString(),

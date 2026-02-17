@@ -31,7 +31,7 @@
     <main class="main-content">
         <%- include("../includes/navbar.ejs") %>
        <div class="chat-section">
-           <h1>ai chat bot </h1>
+           <!-- <h1>ai chat bot </h1> -->
            <div class="ai-chat-box">
                <img src="/asset/icons8-chatgpt.svg" alt="" id="ai-image" class="ai-image" width="40">
                <div class="ai-chat-area">
@@ -548,7 +548,7 @@ async function handleChatResponse(message, models) {
             }
             if (openai) {
                 responseChatBox(chatBoxes["OpenAI"], formatResponseToHTML(openai), 'ChatGPT');
-                if (!user.title) user.title = await getOpenAiResponse(null, openai, true);
+                //if (!user.title || user.title === "New Chat") user.title = await getOpenAiResponse(null, openai, true);
             }
             if (deepSeek) {
                 responseChatBox(chatBoxes["DeepSeek"], formatResponseToHTML(deepSeek), 'deepSeek');

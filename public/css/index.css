@@ -514,6 +514,10 @@ code {
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; 
 }
+#flexSwitchCheckDefault :hover {
+    cursor: pointer;
+
+}
 
 /* addApiKeys form */
 .addBtn{
