@@ -135,6 +135,70 @@ app.post(
     }),
   main.loginPost
 );
+
+app.post("/api/login", (req, res, next) => {
+  passport.authenticate("local", (err, user, info) => {
+    if (err) {
+      return next(err);
+    }
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: info?.message || "Invalid email or password.",
+      });
+    }
+
+    req.logIn(user, (loginErr) => {
+      if (loginErr) {
+        return next(loginErr);
+      }
+
+      return res.json({
+        success: true,
+        redirectTo: "/multiGPT",
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+        },
+      });
+    });
+  })(req, res, next);
+});
+
+app.post("/api/signup", async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+
+    if (!username || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Username, email and password are required.",
+      });
+    }
+
+    const user = new User({ username, email });
+    const registeredUser = await User.register(user, password);
+
+    req.logIn(registeredUser, (loginErr) => {
+      if (loginErr) {
+        return res.status(500).json({ success: false, message: "Sign up succeeded but auto-login failed." });
+      }
+
+      return res.status(201).json({
+        success: true,
+        redirectTo: "/multiGPT",
+      });
+    });
+  } catch (err) {
+    console.error("Signup API error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Error signing up. Try again.",
+    });
+  }
+});
 // react auth recognizer
 app.get("/api/check-auth", (req, res) => {
   if (req.isAuthenticated && req.isAuthenticated()) {
@@ -162,6 +226,7 @@ app.post("/api/openai", openai.getCompletion);
 app.post("/api/gimini", Gemini.giminiapi);
 app.post("/api/deepseek", deepseek.deepseekapi);
 app.get("/multiGPT", requireAuth, main.home);
+app.get("/addapi", requireAuth, main.addApiPage);
 app.post("/addapikey", requireAuth, main.addApiKey);
 
 
