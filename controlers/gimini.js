@@ -134,3 +134,88 @@ Prompt: ${isTitle ? chatTitlePrompt : message}`
 // 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
 
 //AIzaSyDoJD-fq__XDCyh8icnUw36KT5SxSBOVv0
+
+module.exports.giminiapiStream = async (req, res) => {
+    try {
+        const { context, message, user } = req.body;
+
+        const requestPayload = {
+            contents: [
+                {
+                    role: "user",
+                    parts: [
+                        {
+                            text: `Context: ${context || message}\nPrompt: ${message}`
+                        },
+                        ...(user?.file?.data
+                            ? [{
+                                inline_data: {
+                                    mime_type: user.file.mime_type,
+                                    data: user.file.data
+                                }
+                            }]
+                            : [])
+                    ]
+                }
+            ]
+        };
+
+        const upstream = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${API_KEY}`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(requestPayload),
+            }
+        );
+
+        if (!upstream.ok || !upstream.body) {
+            const errText = await upstream.text();
+            return res.status(500).json({ success: false, message: errText || "Gemini stream failed" });
+        }
+
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+
+        const reader = upstream.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const events = buffer.split("\n\n");
+            buffer = events.pop() || "";
+
+            for (const evt of events) {
+                const line = evt.split("\n").find((l) => l.startsWith("data:"));
+                if (!line) continue;
+                const payload = line.replace(/^data:\s*/, "").trim();
+                if (!payload || payload === "[DONE]") continue;
+
+                try {
+                    const parsed = JSON.parse(payload);
+                    const token = parsed?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
+                    if (token) {
+                        res.write(`data: ${JSON.stringify({ token })}\n\n`);
+                    }
+                } catch (_) {
+                    // ignore malformed chunk
+                }
+            }
+        }
+
+        res.write("data: [DONE]\n\n");
+        res.end();
+    } catch (error) {
+        console.error("Gemini stream error:", error.message);
+        if (!res.headersSent) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+        res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+        res.end();
+    }
+};

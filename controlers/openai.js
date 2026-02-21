@@ -51,6 +51,86 @@ module.exports.getCompletion = async (req, res) => {
     }
 };
 
+module.exports.getCompletionStream = async (req, res) => {
+    try {
+        const { context, message } = req.body;
+        const prompt = `${context || ""}\nCurrent user prompt: ${message || ""}`;
+
+        const upstream = await fetch(URL, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${API_KEY}`,
+                "Content-Type": "application/json",
+                "HTTP-Referer": "http://localhost:3000",
+                "X-Title": "Chat Request"
+            },
+            body: JSON.stringify({
+                model: "openai/gpt-4o-mini",
+                messages: [
+                    { role: "system", content: "You are a helpful assistant." },
+                    { role: "user", content: prompt },
+                ],
+                temperature: 0.7,
+                stream: true,
+            }),
+        });
+
+        if (!upstream.ok || !upstream.body) {
+            const errTxt = await upstream.text();
+            return res.status(500).json({ error: errTxt || "Streaming request failed" });
+        }
+
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+
+        const reader = upstream.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const events = buffer.split("\n\n");
+            buffer = events.pop() || "";
+
+            for (const evt of events) {
+                const line = evt.split("\n").find((l) => l.startsWith("data:"));
+                if (!line) continue;
+                const data = line.replace(/^data:\s*/, "").trim();
+
+                if (data === "[DONE]") {
+                    res.write("data: [DONE]\n\n");
+                    res.end();
+                    return;
+                }
+
+                try {
+                    const parsed = JSON.parse(data);
+                    const token = parsed?.choices?.[0]?.delta?.content || "";
+                    if (token) {
+                        res.write(`data: ${JSON.stringify({ token })}\n\n`);
+                    }
+                } catch (_) {
+                    // ignore malformed chunk
+                }
+            }
+        }
+
+        res.write("data: [DONE]\n\n");
+        res.end();
+    } catch (error) {
+        console.error("OpenAI stream error:", error.message);
+        if (!res.headersSent) {
+            return res.status(500).json({ error: error.message });
+        }
+        res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+        res.end();
+    }
+};
+
 
 // ---------------------------
 //  Title Generator Function

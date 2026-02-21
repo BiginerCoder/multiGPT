@@ -122,3 +122,93 @@ module.exports.deepseekapi = async (req, res) => {
   }
 };
 
+
+
+module.exports.deepseekapiStream = async (req, res) => {
+  try {
+    const { context, message } = req.body;
+
+    const upstream = await fetch(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENROUTER_DEEPSEEK_API_KEY}`,
+          "HTTP-Referer": "http://localhost:3001",
+          "X-Title": "MyChatApp",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "deepseek/deepseek-r1",
+          messages: [
+            {
+              role: "system",
+              content: context ? `Context: ${context}` : `Context: ${message}`,
+            },
+            {
+              role: "user",
+              content: message,
+            },
+          ],
+          max_tokens: 1000,
+          temperature: 0.7,
+          stream: true,
+        }),
+      }
+    );
+
+    if (!upstream.ok || !upstream.body) {
+      const errText = await upstream.text();
+      return res.status(500).json({ error: errText || "DeepSeek stream failed" });
+    }
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    const reader = upstream.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split("\n\n");
+      buffer = events.pop() || "";
+
+      for (const evt of events) {
+        const line = evt.split("\n").find((l) => l.startsWith("data:"));
+        if (!line) continue;
+        const payload = line.replace(/^data:\s*/, "").trim();
+
+        if (payload === "[DONE]") {
+          res.write("data: [DONE]\n\n");
+          res.end();
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(payload);
+          const token = parsed?.choices?.[0]?.delta?.content || "";
+          if (token) {
+            res.write(`data: ${JSON.stringify({ token })}\n\n`);
+          }
+        } catch (_) {
+          // ignore malformed chunk
+        }
+      }
+    }
+
+    res.write("data: [DONE]\n\n");
+    res.end();
+  } catch (error) {
+    console.error("DeepSeek stream error:", error.message);
+    if (!res.headersSent) {
+      return res.status(500).json({ error: error.message });
+    }
+    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+    res.end();
+  }
+};
