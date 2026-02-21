@@ -106,12 +106,23 @@ GIMINI_API_KEY=your_gemini_api_key
 DEEPSEEK_API_KEY=your_deepseek_api_key
 ```
 
-### 4. Start the application
+### 4. Build frontend assets (recommended for faster load times)
 ```bash
-node app.js
+npm run build
+```
+(Installs landing dependencies + builds `landing/dist`.)
+
+### 5. Start the application
+```bash
+npm run start
 ```
 
-The application will be available at `http://localhost:3000`
+For one-command production startup (build + start):
+```bash
+npm run start:prod
+```
+
+The application will be available at `http://localhost:3001` locally (Render will inject `PORT`).
 
 ## 🔧 Usage
 

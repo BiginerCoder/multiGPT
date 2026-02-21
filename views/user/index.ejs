@@ -68,6 +68,7 @@
       
     </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
 <script>
 const promt = document.querySelector("#promt")
 const userInput = document.querySelector(".user-input")
@@ -88,6 +89,24 @@ const API_KEY = "AIzaSyDoCP_bZiOK5M5wTzHcslBbssYmhHLmuOU";
 
 const sessionId = "<%= sessionId %>";
 console.log("Session ID:", sessionId);
+
+const socket = io({
+    query: { sessionId },
+    transports: ["websocket", "polling"],
+});
+
+socket.on("connect", () => {
+    console.log("WebSocket connected:", socket.id);
+});
+
+socket.on("chat:saved", (payload) => {
+    console.log("Chat saved event:", payload);
+    chathistoryPreviw();
+});
+
+socket.on("disconnect", () => {
+    console.log("WebSocket disconnected");
+});
 
 const imgsrc = imgbtn.src
 let chatSessionId = null;
