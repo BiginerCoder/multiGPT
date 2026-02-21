@@ -4,7 +4,7 @@
   "main": "app.js",
   "scripts": {
     "dev": "node app.js",
-    "build": "npm --prefix landing run build",
+    "build": "npm --prefix landing install && npm --prefix landing run build",
     "start": "node app.js",
     "start:prod": "npm run build && node app.js",
     "test": "echo \"No tests configured\""

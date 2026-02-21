@@ -110,6 +110,7 @@ DEEPSEEK_API_KEY=your_deepseek_api_key
 ```bash
 npm run build
 ```
+(Installs landing dependencies + builds `landing/dist`.)
 
 ### 5. Start the application
 ```bash
@@ -121,7 +122,7 @@ For one-command production startup (build + start):
 npm run start:prod
 ```
 
-The application will be available at `http://localhost:3001`
+The application will be available at `http://localhost:3001` locally (Render will inject `PORT`).
 
 ## 🔧 Usage
 

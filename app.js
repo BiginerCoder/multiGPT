@@ -1,7 +1,10 @@
 require("dotenv").config();
 const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
 const app = express();
 const path = require("path");
+const fs = require("fs");
 const session = require("express-session");
 const flash = require("connect-flash");
 const ejsMate = require("ejs-mate"); 
@@ -20,6 +23,28 @@ const cors = require("cors");
 const openai = require("./controlers/openai.js");
 const Gemini = require("./controlers/gimini.js");
 const deepseek = require("./controlers/deepSeek.js");
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_ORIGIN || true,
+    credentials: true,
+  },
+});
+
+app.locals.io = io;
+
+io.on("connection", (socket) => {
+  const { sessionId } = socket.handshake.query || {};
+  if (sessionId) {
+    socket.join(`session:${sessionId}`);
+  }
+  console.log("Socket connected:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("Socket disconnected:", socket.id);
+  });
+});
  
 // View Engine
 app.engine("ejs", ejsMate);
@@ -119,8 +144,14 @@ app.get("/test", (req, res) => {
 // Routes
 
 //app.get("/", requireAuth, main.home);
+const landingIndexPath = path.join(__dirname, "landing/dist/index.html");
+
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "landing/dist/index.html"));
+  if (!fs.existsSync(landingIndexPath)) {
+    return res.status(503).send("Landing build not found. Run npm run build before starting server.");
+  }
+
+  res.sendFile(landingIndexPath);
 });
 
 //app.get("/test", async(req, res) => res.render("chatHistory.ejs"));
@@ -239,6 +270,8 @@ app.get("/cookies", (req, res) => {
 });
 
 
-app.listen(3001, () => {
-  console.log("Server is running on port 3001");
+const PORT = process.env.PORT || 3001;
+
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
