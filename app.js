@@ -1,7 +1,10 @@
 require("dotenv").config();
 const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
 const app = express();
 const path = require("path");
+const fs = require("fs");
 const session = require("express-session");
 const flash = require("connect-flash");
 const ejsMate = require("ejs-mate"); 
@@ -20,6 +23,28 @@ const cors = require("cors");
 const openai = require("./controlers/openai.js");
 const Gemini = require("./controlers/gimini.js");
 const deepseek = require("./controlers/deepSeek.js");
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_ORIGIN || true,
+    credentials: true,
+  },
+});
+
+app.locals.io = io;
+
+io.on("connection", (socket) => {
+  const { sessionId } = socket.handshake.query || {};
+  if (sessionId) {
+    socket.join(`session:${sessionId}`);
+  }
+  console.log("Socket connected:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("Socket disconnected:", socket.id);
+  });
+});
  
 // View Engine
 app.engine("ejs", ejsMate);
@@ -119,8 +144,14 @@ app.get("/test", (req, res) => {
 // Routes
 
 //app.get("/", requireAuth, main.home);
+const landingIndexPath = path.join(__dirname, "landing/dist/index.html");
+
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "landing/dist/index.html"));
+  if (!fs.existsSync(landingIndexPath)) {
+    return res.status(503).send("Landing build not found. Run npm run build before starting server.");
+  }
+
+  res.sendFile(landingIndexPath);
 });
 
 //app.get("/test", async(req, res) => res.render("chatHistory.ejs"));
@@ -135,6 +166,70 @@ app.post(
     }),
   main.loginPost
 );
+
+app.post("/api/login", (req, res, next) => {
+  passport.authenticate("local", (err, user, info) => {
+    if (err) {
+      return next(err);
+    }
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: info?.message || "Invalid email or password.",
+      });
+    }
+
+    req.logIn(user, (loginErr) => {
+      if (loginErr) {
+        return next(loginErr);
+      }
+
+      return res.json({
+        success: true,
+        redirectTo: "/multiGPT",
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+        },
+      });
+    });
+  })(req, res, next);
+});
+
+app.post("/api/signup", async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+
+    if (!username || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Username, email and password are required.",
+      });
+    }
+
+    const user = new User({ username, email });
+    const registeredUser = await User.register(user, password);
+
+    req.logIn(registeredUser, (loginErr) => {
+      if (loginErr) {
+        return res.status(500).json({ success: false, message: "Sign up succeeded but auto-login failed." });
+      }
+
+      return res.status(201).json({
+        success: true,
+        redirectTo: "/multiGPT",
+      });
+    });
+  } catch (err) {
+    console.error("Signup API error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Error signing up. Try again.",
+    });
+  }
+});
 // react auth recognizer
 app.get("/api/check-auth", (req, res) => {
   if (req.isAuthenticated && req.isAuthenticated()) {
@@ -159,9 +254,11 @@ app.get("/chat-history/:id", main.chatHistory);
 app.delete("/chat-history/delete/:id", main.deleteChatHistory);
 
 app.post("/api/openai", openai.getCompletion);
+app.post("/api/openai/stream", openai.getCompletionStream);
 app.post("/api/gimini", Gemini.giminiapi);
 app.post("/api/deepseek", deepseek.deepseekapi);
 app.get("/multiGPT", requireAuth, main.home);
+app.get("/addapi", requireAuth, main.addApiPage);
 app.post("/addapikey", requireAuth, main.addApiKey);
 
 
@@ -174,6 +271,8 @@ app.get("/cookies", (req, res) => {
 });
 
 
-app.listen(3001, () => {
-  console.log("Server is running on port 3001");
+const PORT = process.env.PORT || 3001;
+
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });

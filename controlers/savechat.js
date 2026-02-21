@@ -149,6 +149,16 @@ module.exports.api = async (req, res) => {
 
     console.log("Chat saved with ID:", chatSessionId);
 
+    const io = req.app.locals.io;
+    if (io) {
+      io.to(`session:${chatSessionId}`).emit("chat:saved", {
+        chatId: chatSessionId,
+        userId: String(userId),
+        title: title || "New Chat",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     return res.status(200).json({
       success: true,
       message: "Chat saved successfully",
