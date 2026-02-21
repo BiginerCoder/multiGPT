@@ -254,6 +254,7 @@ app.get("/chat-history/:id", main.chatHistory);
 app.delete("/chat-history/delete/:id", main.deleteChatHistory);
 
 app.post("/api/openai", openai.getCompletion);
+app.post("/api/openai/stream", openai.getCompletionStream);
 app.post("/api/gimini", Gemini.giminiapi);
 app.post("/api/deepseek", deepseek.deepseekapi);
 app.get("/multiGPT", requireAuth, main.home);

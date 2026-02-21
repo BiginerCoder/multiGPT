@@ -290,6 +290,55 @@ async function getOpenAiResponse(context, message, isTitle) {
         return "Error fetching response from OpenAI.";
     }
 }
+
+async function getOpenAiStreamResponse(context, message, onToken) {
+    try {
+        const resp = await fetch("/api/openai/stream", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ context, message }),
+        });
+
+        if (!resp.ok || !resp.body) {
+            throw new Error(`HTTP Error: ${resp.status}`);
+        }
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let fullText = "";
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const events = buffer.split("\n\n");
+            buffer = events.pop() || "";
+
+            for (const evt of events) {
+                const line = evt.split("\n").find((l) => l.startsWith("data:"));
+                if (!line) continue;
+
+                const payload = line.replace(/^data:\s*/, "").trim();
+                if (payload === "[DONE]") {
+                    return fullText;
+                }
+
+                const data = JSON.parse(payload);
+                if (data.token) {
+                    fullText += data.token;
+                    onToken(fullText);
+                }
+            }
+        }
+
+        return fullText;
+    } catch (error) {
+        console.error("OpenAI stream error:", error.message);
+        return "Error fetching response from OpenAI.";
+    }
+}
 async function getDeepSeekResponse(context, message, isTitle) {
     try {
         const resp = await fetch("/api/deepseek", {
@@ -365,6 +414,24 @@ async function responseChatBox(aiChatBox, response, model) {
     // Auto-scroll to bottom
     chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: "smooth" });
 }
+
+function startStreamingChatBox(aiChatBox, model) {
+    const text = aiChatBox.querySelector(".ai-chat-area");
+    if (!text) return null;
+
+    text.innerHTML = "";
+    const heading = document.createElement("h4");
+    heading.textContent = model;
+    text.appendChild(heading);
+
+    const responseDiv = document.createElement("div");
+    text.appendChild(responseDiv);
+
+    return (content) => {
+        responseDiv.innerHTML = formatResponseToHTML(content || "");
+        chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: "smooth" });
+    };
+}
 function createChatBox(html, classes){
 
     let Box = document.createElement("div")
@@ -436,9 +503,15 @@ async function handleChatResponse(message, models) {
             }
 
             // Fetch responses from selected models
+            const streamOpenAi = async () => {
+                if (!models[1].checked) return null;
+                const streamUpdater = startStreamingChatBox(chatBoxes["OpenAI"], "ChatGPT");
+                return getOpenAiStreamResponse(fullChat, message, streamUpdater);
+            };
+
             [aidata, openai, deepSeek] = await Promise.all([
                 models[0].checked ? getGiminiResponse(fullChat, message, false) : null,
-                models[1].checked ? getOpenAiResponse(fullChat, message, false) : null,
+                streamOpenAi(),
                 models[2].checked ? getDeepSeekResponse(fullChat, message, false) : null
             ]);
 
@@ -449,7 +522,6 @@ async function handleChatResponse(message, models) {
                 console.log(user.title)
             }
             if (openai) {
-                responseChatBox(chatBoxes["OpenAI"], formatResponseToHTML(openai), 'ChatGPT');
                 if (!user.title) user.title = await getOpenAiResponse(null, openai, true);
             }
             if (deepSeek) {
