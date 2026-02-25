@@ -25,7 +25,7 @@
                 </div>
                 <div class="addBtn">
                     <button type="submit" class="btn btn-signup btn-primary w-100">add</button>
-                    <button type="submit" class="btn btn-signup btn-primary w-100">demo</button>
+                    <button type="button" id="demoBtn" class="btn btn-signup btn-primary w-100">demo</button>
                 </div>
                 
             </form>
@@ -36,3 +36,8 @@
         </div>
         
 </body>
+<script>
+    document.getElementById("demoBtn").addEventListener("click", () => {
+        window.location.href = "/multiGPT";
+    });
+</script>

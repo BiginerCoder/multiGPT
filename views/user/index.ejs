@@ -84,8 +84,8 @@ const midbtn = document.querySelector(".midbtn")
 const toggle = document.getElementById('flexSwitchCheckDefault');
 const queryButtons = document.querySelectorAll('.query');
 
-const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
-const API_KEY = "AIzaSyDoCP_bZiOK5M5wTzHcslBbssYmhHLmuOU"; 
+//const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+//const API_KEY = "AIzaSyDoCP_bZiOK5M5wTzHcslBbssYmhHLmuOU"; 
 
 const sessionId = "<%= sessionId %>";
 console.log("Session ID:", sessionId);
@@ -300,7 +300,10 @@ async function getOpenAiStreamResponse(context, message, onToken) {
         });
 
         if (!resp.ok || !resp.body) {
-            throw new Error(`HTTP Error: ${resp.status}`);
+            const errText = await resp.text().catch(() => "");
+            const msg = errText ? `Error: ${errText}` : `Error: HTTP ${resp.status}`;
+            onToken(msg);
+            return msg;
         }
 
         const reader = resp.body.getReader();
@@ -326,6 +329,11 @@ async function getOpenAiStreamResponse(context, message, onToken) {
                 }
 
                 const data = JSON.parse(payload);
+                if (data.error) {
+                    fullText = `Error: ${data.error}`;
+                    onToken(fullText);
+                    return fullText;
+                }
                 if (data.token) {
                     fullText += data.token;
                     onToken(fullText);
@@ -336,23 +344,35 @@ async function getOpenAiStreamResponse(context, message, onToken) {
         return fullText;
     } catch (error) {
         console.error("OpenAI stream error:", error.message);
-        return "Error fetching response from OpenAI.";
+        const msg = `Error: ${error.message}`;
+        onToken(msg);
+        return msg;
     }
 }
-async function getGiminiStreamResponse(context, message, onToken) {
+async function getGiminiStreamResponse(
+    context,
+    message,
+    onToken
+) {
     try {
-        const resp = await fetch("/api/gimini/stream", {
+        const response = await fetch("/api/gimini/stream", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+            },
             body: JSON.stringify({ context, message, user }),
         });
 
-        if (!resp.ok || !resp.body) {
-            throw new Error(`HTTP Error: ${resp.status}`);
+        if (!response.ok || !response.body) {
+            const errText = await response.text().catch(() => "");
+            const msg = errText ? `Error: ${errText}` : `Error: HTTP ${response.status}`;
+            onToken(msg);
+            return msg;
         }
 
-        const reader = resp.body.getReader();
+        const reader = response.body.getReader();
         const decoder = new TextDecoder();
+
         let buffer = "";
         let fullText = "";
 
@@ -365,13 +385,24 @@ async function getGiminiStreamResponse(context, message, onToken) {
             buffer = events.pop() || "";
 
             for (const evt of events) {
-                const line = evt.split("\n").find((l) => l.startsWith("data:"));
+                const line = evt
+                    .split("\n")
+                    .find(l => l.startsWith("data:"));
+
                 if (!line) continue;
 
                 const payload = line.replace(/^data:\s*/, "").trim();
-                if (payload === "[DONE]") return fullText;
+
+                if (payload === "[DONE]") {
+                    return fullText;
+                }
 
                 const data = JSON.parse(payload);
+                if (data.error) {
+                    fullText = `Error: ${data.error}`;
+                    onToken(fullText);
+                    return fullText;
+                }
                 if (data.token) {
                     fullText += data.token;
                     onToken(fullText);
@@ -380,9 +411,12 @@ async function getGiminiStreamResponse(context, message, onToken) {
         }
 
         return fullText;
+
     } catch (error) {
-        console.error("Gemini stream error:", error.message);
-        return "Error fetching response from Gemini.";
+        console.error("Gemini stream error:", error);
+        const msg = `Error: ${error.message || error}`;
+        onToken(msg);
+        return msg;
     }
 }
 
@@ -395,7 +429,10 @@ async function getDeepSeekStreamResponse(context, message, onToken) {
         });
 
         if (!resp.ok || !resp.body) {
-            throw new Error(`HTTP Error: ${resp.status}`);
+            const errText = await resp.text().catch(() => "");
+            const msg = errText ? `Error: ${errText}` : `Error: HTTP ${resp.status}`;
+            onToken(msg);
+            return msg;
         }
 
         const reader = resp.body.getReader();
@@ -419,6 +456,11 @@ async function getDeepSeekStreamResponse(context, message, onToken) {
                 if (payload === "[DONE]") return fullText;
 
                 const data = JSON.parse(payload);
+                if (data.error) {
+                    fullText = `Error: ${data.error}`;
+                    onToken(fullText);
+                    return fullText;
+                }
                 if (data.token) {
                     fullText += data.token;
                     onToken(fullText);
@@ -429,10 +471,11 @@ async function getDeepSeekStreamResponse(context, message, onToken) {
         return fullText;
     } catch (error) {
         console.error("DeepSeek stream error:", error.message);
-        return "Error fetching response from DeepSeek.";
+        const msg = `Error: ${error.message}`;
+        onToken(msg);
+        return msg;
     }
 }
-
 async function getDeepSeekResponse(context, message, isTitle) {
     try {
         const resp = await fetch("/api/deepseek", {
@@ -518,10 +561,22 @@ function startStreamingChatBox(aiChatBox, model) {
     heading.textContent = model;
     text.appendChild(heading);
 
+    const loading = document.createElement("div");
+    loading.className = "stream-loading";
+    loading.setAttribute("role", "status");
+    loading.setAttribute("aria-label", "Loading");
+    text.appendChild(loading);
+
     const responseDiv = document.createElement("div");
     text.appendChild(responseDiv);
 
+    let hasFirstToken = false;
+
     return (content) => {
+        if (!hasFirstToken && content) {
+            hasFirstToken = true;
+            loading.remove();
+        }
         responseDiv.innerHTML = formatResponseToHTML(content || "");
         chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: "smooth" });
     };
@@ -630,7 +685,7 @@ async function handleChatResponse(message, models) {
                 if (!user.title) user.title = await getOpenAiResponse(null, openai, true);
             }
             if (deepSeek) {
-                console.log(deepSeek) //logic is perfect
+                console.log(deepSeek)
                 if (!user.title) user.title = await getDeepSeekResponse(null, deepSeek, true);
             }
             currentChat = `promt:${user.message}\nreponses\nGimini:${aidata?aidata:null}\nopenai: ${openai?openai:null}\ndeepSeek: ${deepSeek?deepSeek:null}`;
@@ -815,7 +870,7 @@ async function chatHistory(){
         });
 
         const data = await response.json();
-        console.log("chat history data at line no 597 index.ejs :", data)
+        //console.log("chat history data at line no 597 index.ejs :", data)
         if (data) {
             return data
         } else {
@@ -972,3 +1027,5 @@ function copyCode(button) {
 
 </script>
     
+
+

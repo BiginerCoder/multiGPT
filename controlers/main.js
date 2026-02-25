@@ -1,8 +1,7 @@
 
 const userchat = require("../models/userChat.js")
 const User = require("../models/loginShema.js");
-const { json } = require("express");
-const { chat } = require("./savechat.js");
+const ApiKey = require("../models/apiKeys.js");
 require('dotenv').config()
 
 module.exports.home = async (req, res) => {
@@ -67,9 +66,8 @@ module.exports.login = (req, res) => {
   }
 
 module.exports.loginPost = (req, res) => {
-   
-  res.render("user/addApiKeys.ejs", { userdata: req.session.userId });  
-  }
+  res.redirect("/addapi");
+};
 
   
 
@@ -99,30 +97,81 @@ module.exports.logout = (req, res) => {
       res.redirect("/");
     });
 };
+// module.exports.addApiKey = async (req, res) => {
+//   const { Gemini, ChatGPT, DeepSeek } = req.body;
+//   console.log("Received API Keys:", { Gemini, ChatGPT, DeepSeek });
+  
+//   req.session.userId = req.user._id;
+
+//   const user = await userchat.findOne({ userId: req.user._id });
+//   let userdata = null;
+
+//   if (!user) {
+//       const userchatdata = new userchat();
+//       userchatdata.userId = req.user._id;
+//       userchatdata.username = req.user.username;
+//       userdata = userchatdata;
+//   } else {
+//       userdata = user;
+//   }
+//   req.session.userdata = userdata;
+//   // Convert ObjectId to string for rendering in EJS
+//   const dataToRender = {
+//       userId: userdata.userId.toString(),
+//       username: userdata.username,
+//   };
+//   // const dotenv = {
+//   //   apiKey: process.env.API_KEY,
+//   //   apiurl: process.env.API_URL,
+//   // }
+//   const apiKeyData = new ApiKey({
+//     userId: req.user._id,
+//     apiGiminiKey: Gemini ? [{ key: Gemini }] : [],
+//     apiChatGPTKey: ChatGPT ? [{ key: ChatGPT }] : [],
+//     apiDeepSeekKey: DeepSeek ? [{ key: DeepSeek }] : [],
+//   });
+
+//   console.log("User Chat Data:", dataToRender.userId);
+//   res.redirect("/multiGPT");
+// };
 module.exports.addApiKey = async (req, res) => {
-  req.session.userId = req.user._id;
+  try {
+    const { Gemini, ChatGPT, DeepSeek } = req.body;
 
-  const user = await userchat.findOne({ userId: req.user._id });
-  let userdata = null;
+    console.log("Received API Keys:", { Gemini, ChatGPT, DeepSeek });
 
-  if (!user) {
-      const userchatdata = new userchat();
-      userchatdata.userId = req.user._id;
-      userchatdata.username = req.user.username;
-      userdata = userchatdata;
-  } else {
-      userdata = user;
+    const userId = req.user._id;
+
+    // Find existing API key document
+    let apiKeyDoc = await ApiKey.findOne({ userId });
+
+    // If user has no document → create one
+    if (!apiKeyDoc) {
+      apiKeyDoc = new ApiKey({ userId });
+    }
+
+    // Push keys only if provided
+    if (Gemini) {
+      apiKeyDoc.apiGiminiKey.push({ key: Gemini });
+    }
+
+    if (ChatGPT) {
+      apiKeyDoc.apiChatGPTKey.push({ key: ChatGPT });
+    }
+
+    if (DeepSeek) {
+      apiKeyDoc.apiDeepSeekKey.push({ key: DeepSeek });
+    }
+
+    // SAVE TO DATABASE ✅
+    await apiKeyDoc.save();
+
+    console.log("API Keys saved successfully");
+
+    res.redirect("/multiGPT");
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error saving API keys");
   }
-  req.session.userdata = userdata;
-  // Convert ObjectId to string for rendering in EJS
-  const dataToRender = {
-      userId: userdata.userId.toString(),
-      username: userdata.username,
-  };
-  const dotenv = {
-    apiKey: process.env.API_KEY,
-    apiurl: process.env.API_URL,
-  }
-  console.log("User Chat Data:", dataToRender.userId);
-  res.render("user/index.ejs", { userdata: dataToRender, dotenv: dotenv });
 };

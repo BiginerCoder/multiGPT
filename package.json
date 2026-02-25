@@ -16,6 +16,7 @@
     "@azure-rest/ai-inference": "latest",
     "@azure/core-auth": "latest",
     "@azure/core-sse": "latest",
+    "@google/genai": "^1.42.0",
     "axios": "^1.7.9",
     "connect-flash": "^0.1.1",
     "connect-mongo": "^5.1.0",

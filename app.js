@@ -116,7 +116,7 @@ passport.deserializeUser(User.deserializeUser());
 
 // Middleware to Check If User Is Logged In
 const requireAuth = (req, res, next) => {
-  if (req.isAuthenticated && !req.isAuthenticated()) {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
     return res.redirect("/");
   }
   next();
@@ -187,7 +187,7 @@ app.post("/api/login", (req, res, next) => {
 
       return res.json({
         success: true,
-        redirectTo: "/multiGPT",
+        redirectTo: "/addapi",
         user: {
           id: user._id,
           username: user.username,
@@ -219,7 +219,7 @@ app.post("/api/signup", async (req, res) => {
 
       return res.status(201).json({
         success: true,
-        redirectTo: "/multiGPT",
+        redirectTo: "/addapi",
       });
     });
   } catch (err) {
@@ -246,8 +246,8 @@ app.get("/api/check-auth", (req, res) => {
 });
 
 
-app.get("/signup", main.signup);
-app.post("/signup", main.signupPost);
+//app.get("/signup", main.signup);
+//app.post("/signup", main.signupPost);
 app.get("/logout", main.logout);
 
 app.get("/chat-history/:id", main.chatHistory);

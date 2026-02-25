@@ -10,6 +10,20 @@ module.exports.getCompletion = async (req, res) => {
     try {
         
         const { context, message, title } = req.body;
+        const userID = req.session?.userId;
+
+        const saved_api_keys = await apikey.findOne({ userId: userID });
+        // selecting latest active api from last elemtent of array
+        const API_KEY =
+        saved_api_keys?.apiOpenaiKey?.slice().reverse().find(k => k.isActive)?.key
+        || process.env.OPENAI_OPENROUTER_KEY;
+
+        if (!API_KEY) {
+        return res.status(500).json({
+            success: false,
+            message: "Missing OPENAI_OPENROUTER_KEY"
+        });
+        }
         const prompt = `${context}\nCurrent user prompt: ${message}`;
 
         const completion = await axios.post(
@@ -56,6 +70,10 @@ module.exports.getCompletionStream = async (req, res) => {
         const { context, message } = req.body;
         const prompt = `${context || ""}\nCurrent user prompt: ${message || ""}`;
 
+        if (!API_KEY) {
+            return res.status(500).json({ error: "Missing OPENAI_OPENROUTER_KEY" });
+        }
+
         const upstream = await fetch(URL, {
             method: "POST",
             headers: {
@@ -83,9 +101,11 @@ module.exports.getCompletionStream = async (req, res) => {
         res.setHeader("Content-Type", "text/event-stream");
         res.setHeader("Cache-Control", "no-cache");
         res.setHeader("Connection", "keep-alive");
+        res.setHeader("X-Accel-Buffering", "no");
+        res.flushHeaders?.();
 
         const reader = upstream.body.getReader();
-        const decoder = new TextDecoder();
+        const decoder = new TextDecoder("utf-8");
         let buffer = "";
 
         while (true) {
@@ -93,13 +113,16 @@ module.exports.getCompletionStream = async (req, res) => {
             if (done) break;
 
             buffer += decoder.decode(value, { stream: true });
-            const events = buffer.split("\n\n");
+            const events = buffer.split(/\r?\n\r?\n/);
             buffer = events.pop() || "";
 
             for (const evt of events) {
-                const line = evt.split("\n").find((l) => l.startsWith("data:"));
-                if (!line) continue;
-                const data = line.replace(/^data:\s*/, "").trim();
+                const lines = evt.split(/\r?\n/).filter(Boolean);
+                const dataLines = lines.filter((l) => l.startsWith("data:"));
+                if (dataLines.length === 0) continue;
+                const data = dataLines
+                    .map((l) => l.replace(/^data:\s*/, "").trim())
+                    .join("");
 
                 if (data === "[DONE]") {
                     res.write("data: [DONE]\n\n");
@@ -112,6 +135,7 @@ module.exports.getCompletionStream = async (req, res) => {
                     const token = parsed?.choices?.[0]?.delta?.content || "";
                     if (token) {
                         res.write(`data: ${JSON.stringify({ token })}\n\n`);
+                        await new Promise((r) => setTimeout(r, 10));
                     }
                 } catch (_) {
                     // ignore malformed chunk
