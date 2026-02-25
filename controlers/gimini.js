@@ -1,9 +1,25 @@
 const apikey = require("../models/apiKeys");
+const axios = require("axios");
+const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
 module.exports.giminiTitle = async (req, res) => {
     console.log("Entered Gemini TITLE controller");
 
     const { message, context } = req.body;
+    const userID = req.session?.userId;
+
+    const saved_api_keys = await apikey.findOne({ userId: userID });
+    const API_KEY =
+        saved_api_keys?.apiGiminiKey?.slice().reverse().find(k => k.isActive)?.key
+        || process.env.GIMINI_API_KEY;
+
+    if (!API_KEY) {
+        return res.status(500).json({
+            success: false,
+            message: "Missing GIMINI_API_KEY"
+        });
+    }
 
     // ✅ Strict title instruction
     const chatTitlePrompt = `
@@ -31,7 +47,7 @@ ${context || message}
 
     try {
         const response = await axios.post(
-            `${API_URL}?key=${API_KEY}`,
+            `${GEMINI_BASE_URL}/${GEMINI_MODEL}:generateContent?key=${API_KEY}`,
             requestPayload,
             {
                 headers: {
@@ -62,6 +78,92 @@ ${context || message}
             success: false,
             message: "Title generation failed",
             error: error.response?.data || error.message
+        });
+    }
+};
+module.exports.giminiapi = async (req, res) => {
+    try {
+        const { context, message, user, isTitle } = req.body;
+        const userID = req.session?.userId;
+
+        const saved_api_keys = await apikey.findOne({ userId: userID });
+        const API_KEY =
+            saved_api_keys?.apiGiminiKey?.slice().reverse().find(k => k.isActive)?.key
+            || process.env.GIMINI_API_KEY;
+
+        if (!API_KEY) {
+            return res.status(500).json({
+                success: false,
+                message: "Missing GIMINI_API_KEY"
+            });
+        }
+
+        if (!message && !context) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: message or context"
+            });
+        }
+
+        const titlePrompt =
+            "Generate ONLY ONE short chat title (maximum 6 words). " +
+            "Do NOT explain anything. Do NOT add quotes. Return plain text only.";
+
+        const finalPrompt = isTitle ? titlePrompt : message;
+        const finalContext = context || message;
+
+        const requestPayload = {
+            contents: [
+                {
+                    role: "user",
+                    parts: [
+                        { text: `Context: ${finalContext}\nPrompt: ${finalPrompt}` },
+                        ...(user?.file?.data
+                            ? [{
+                                inline_data: {
+                                    mime_type: user.file.mime_type,
+                                    data: user.file.data
+                                }
+                            }]
+                            : [])
+                    ]
+                }
+            ]
+        };
+
+        const response = await fetch(
+            `${GEMINI_BASE_URL}/${GEMINI_MODEL}:generateContent?key=${API_KEY}`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(requestPayload),
+            }
+        );
+
+        const data = await response.json();
+        if (!response.ok) {
+            return res.status(500).json({
+                success: false,
+                message: data?.error?.message || "Gemini request failed"
+            });
+        }
+
+        const result =
+            data?.candidates?.[0]?.content?.parts
+                ?.map(p => p.text || "")
+                .join("")
+                .trim() || "";
+
+        return res.status(200).json({
+            success: true,
+            result,
+            isTitle: !!isTitle
+        });
+    } catch (error) {
+        console.error("Gemini API error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message
         });
     }
 };
