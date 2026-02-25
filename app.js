@@ -136,10 +136,6 @@ app.use((req, res, next) => {
   
   next();
 });
-app.get("/test", (req, res) => {
-  console.log("Locals in test route:", res.locals);
-  res.send("Check console");
-});
 
 // Routes
 
@@ -252,7 +248,6 @@ app.get("/logout", main.logout);
 
 app.get("/chat-history/:id", main.chatHistory);
 app.delete("/chat-history/delete/:id", main.deleteChatHistory);
-
 app.post("/api/openai", openai.getCompletion);
 app.post("/api/openai/stream", openai.getCompletionStream);
 app.post("/api/gimini", Gemini.giminiapi);
@@ -268,10 +263,6 @@ app.get("/api/chat", requireAuth, savechat.chat);
 app.post("/api/req", savechat.api);
 app.get("/api/newchat", newChat.startNewChat);
 app.post("/api/end-session", savechat.endChat);
-app.get("/cookies", (req, res) => {
-  res.cookie("name", "express").send(req.session);
-});
-
 
 const PORT = process.env.PORT || 3001;
 

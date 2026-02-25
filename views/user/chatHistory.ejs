@@ -335,88 +335,88 @@ async function deleteChatHistory(item) {
     }
 }
 async function getOpenAiResponse(context, message, isTitle) {
-//     try {
-//         const resp = await fetch("/api/openai", {
-//             method: "POST",
-//             headers: { "Content-Type": "application/json" },
-//             body: JSON.stringify({ context, message, isTitle }),
-//         });
+    try {
+        const resp = await fetch("/api/openai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ context, message, isTitle }),
+        });
 
-//         if (!resp.ok) {
-//             throw new Error(`HTTP Error: ${resp.status}`);
-//         }
+        if (!resp.ok) {
+            throw new Error(`HTTP Error: ${resp.status}`);
+        }
 
-//         let data = await resp.json();
+        let data = await resp.json();
 
-//         if (data.response) {
-//             user.file = { data: null, mime_type: null };
-//             return data.response;
-//         } else {
-//             return data.error || "Unknown error occurred.";
-//         }
-//     } catch (error) {
-//         console.error("OpenAI API Error:", error.message);
-//         return "Error fetching response from OpenAI.";
-//     }
-// }
-// async function getOpenAiStreamResponse(context, message, onToken) {
-//     try {
-//         const resp = await fetch("/api/openai/stream", {
-//             method: "POST",
-//             headers: { "Content-Type": "application/json" },
-//             body: JSON.stringify({ context, message }),
-//         });
+        if (data.response) {
+            user.file = { data: null, mime_type: null };
+            return data.response;
+        } else {
+            return data.error || "Unknown error occurred.";
+        }
+    } catch (error) {
+        console.error("OpenAI API Error:", error.message);
+        return "Error fetching response from OpenAI.";
+    }
+}
+async function getOpenAiStreamResponse(context, message, onToken) {
+    try {
+        const resp = await fetch("/api/openai/stream", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ context, message }),
+        });
 
-//         if (!resp.ok || !resp.body) {
-//             const errText = await resp.text().catch(() => "");
-//             const msg = errText ? `Error: ${errText}` : `Error: HTTP ${resp.status}`;
-//             onToken(msg);
-//             return msg;
-//         }
+        if (!resp.ok || !resp.body) {
+            const errText = await resp.text().catch(() => "");
+            const msg = errText ? `Error: ${errText}` : `Error: HTTP ${resp.status}`;
+            onToken(msg);
+            return msg;
+        }
 
-//         const reader = resp.body.getReader();
-//         const decoder = new TextDecoder();
-//         let buffer = "";
-//         let fullText = "";
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let fullText = "";
 
-//         while (true) {
-//             const { value, done } = await reader.read();
-//             if (done) break;
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
 
-//             buffer += decoder.decode(value, { stream: true });
-//             const events = buffer.split("\n\n");
-//             buffer = events.pop() || "";
+            buffer += decoder.decode(value, { stream: true });
+            const events = buffer.split("\n\n");
+            buffer = events.pop() || "";
 
-//             for (const evt of events) {
-//                 const line = evt.split("\n").find((l) => l.startsWith("data:"));
-//                 if (!line) continue;
+            for (const evt of events) {
+                const line = evt.split("\n").find((l) => l.startsWith("data:"));
+                if (!line) continue;
 
-//                 const payload = line.replace(/^data:\s*/, "").trim();
-//                 if (payload === "[DONE]") {
-//                     return fullText;
-//                 }
+                const payload = line.replace(/^data:\s*/, "").trim();
+                if (payload === "[DONE]") {
+                    return fullText;
+                }
 
-//                 const data = JSON.parse(payload);
-//                 if (data.error) {
-//                     fullText = `Error: ${data.error}`;
-//                     onToken(fullText);
-//                     return fullText;
-//                 }
-//                 if (data.token) {
-//                     fullText += data.token;
-//                     onToken(fullText);
-//                 }
-//             }
-//         }
+                const data = JSON.parse(payload);
+                if (data.error) {
+                    fullText = `Error: ${data.error}`;
+                    onToken(fullText);
+                    return fullText;
+                }
+                if (data.token) {
+                    fullText += data.token;
+                    onToken(fullText);
+                }
+            }
+        }
 
-//         return fullText;
-//     } catch (error) {
-//         console.error("OpenAI stream error:", error.message);
-//         const msg = `Error: ${error.message}`;
-//         onToken(msg);
-//         return msg;
-//     }
-// }
+        return fullText;
+    } catch (error) {
+        console.error("OpenAI stream error:", error.message);
+        const msg = `Error: ${error.message}`;
+        onToken(msg);
+        return msg;
+    }
+}
 async function getGiminiStreamResponse(
     context,
     message,
@@ -656,6 +656,13 @@ async function newChat(){
 }
 
 let RememberingCurrentChat = matchedChat ? matchedChat.chats : '';
+
+function buildCurrentChatSummary(message, responses) {
+    return `promt:${message}\nreponses\n` +
+        `Gimini:${responses.gemini ?? null}\n` +
+        `openai: ${responses.openai ?? null}\n` +
+        `deepSeek: ${responses.deepSeek ?? null}`;
+}
 async function handleChatResponse(message, models) {
     try {
         
@@ -697,7 +704,7 @@ async function handleChatResponse(message, models) {
             let chatBoxes = {};
             imgbtn.src = imgsrc;
             let aidata, openai, deepSeek;
-            let giminiCompare, openaiCompare, deepSeekCompare;
+            let compareResponse = null;
             if(models[0].checked && models[1].checked || 
             models[0].checked && models[2].checked || 
             models[1].checked && models[2].checked )
@@ -743,12 +750,29 @@ async function handleChatResponse(message, models) {
                 streamOpenAi(),
                 streamDeepSeek()
             ]);
-            currentChat = `promt:${user.message}\nreponses\nGimini:${aidata?aidata:null}\nopenai: ${openai?openai:null}\ndeepSeek: ${deepSeek?deepSeek:null}`;
+            currentChat = buildCurrentChatSummary(user.message, {
+                gemini: aidata,
+                openai,
+                deepSeek,
+            });
             }
             else{
                 let comparePrompt = `compare this different ai responses in context based on`;
                 userInput.ariaPlaceholder = "compare this different ai responses based on...";
                 console.log("Switch is ON");
+
+                const baseResponses = { gemini: null, openai: null, deepSeek: null };
+                if (models[0].checked) {
+                    baseResponses.gemini = await getGiminiResponse(fullChat, message, false);
+                }
+                if (models[1].checked) {
+                    baseResponses.openai = await getOpenAiResponse(fullChat, message, false);
+                }
+                if (models[2].checked) {
+                    baseResponses.deepSeek = await getDeepSeekResponse(fullChat, message, false);
+                }
+
+                currentChat = buildCurrentChatSummary(user.message, baseResponses);
 
                 if (models[0].checked) {
                     const compareMessage = `${comparePrompt} ${message}`;
@@ -758,27 +782,30 @@ async function handleChatResponse(message, models) {
                     chatSection.appendChild(chatBoxes["Gemini"]);
 
                     // Await response
-                    giminiCompare = await getGiminiResponse(currentChat, compareMessage, false);
-                    console.log(giminiCompare);
+                    compareResponse = await getGiminiResponse(currentChat, compareMessage, false);
+                    console.log(compareResponse);
 
                     // Show response in UI
-                    responseChatBox(chatBoxes["Gemini"], formatResponseToHTML(giminiCompare), 'Gemini');
+                    responseChatBox(chatBoxes["Gemini"], formatResponseToHTML(compareResponse), 'Gemini');
+                    if (!user.title && compareResponse) user.title = await getGiminiResponse(null, compareResponse, true);
 
                 } else if (models[1].checked) {
                     chatBoxes["OpenAI"] = createChatBox(loadingHtml("OpenAI"), "ai-chat-box");
                     chatSection.appendChild(chatBoxes["OpenAI"]);
 
-                    openaiCompare = await getOpenAiResponse(currentChat, `${comparePrompt} ${message}`, false);
-                    console.log(openaiCompare);
-                    responseChatBox(chatBoxes["OpenAI"], formatResponseToHTML(openaiCompare), 'ChatGPT');
+                    compareResponse = await getOpenAiResponse(currentChat, `${comparePrompt} ${message}`, false);
+                    console.log(compareResponse);
+                    responseChatBox(chatBoxes["OpenAI"], formatResponseToHTML(compareResponse), 'ChatGPT');
+                    if (!user.title && compareResponse) user.title = await getOpenAiResponse(null, compareResponse, true);
 
                 } else if (models[2].checked) {
                     chatBoxes["DeepSeek"] = createChatBox(loadingHtml("DeepSeek"), "ai-chat-box");
                     chatSection.appendChild(chatBoxes["DeepSeek"]);
 
-                    deepSeekCompare = await getDeepSeekResponse(currentChat, `${comparePrompt} ${message}`, false);
-                    console.log(deepSeekCompare);
-                    responseChatBox(chatBoxes["DeepSeek"], formatResponseToHTML(deepSeekCompare), 'DeepSeek');
+                    compareResponse = await getDeepSeekResponse(currentChat, `${comparePrompt} ${message}`, false);
+                    console.log(compareResponse);
+                    responseChatBox(chatBoxes["DeepSeek"], formatResponseToHTML(compareResponse), 'DeepSeek');
+                    if (!user.title && compareResponse) user.title = await getDeepSeekResponse(null, compareResponse, true);
                 }
             }
            
@@ -786,9 +813,11 @@ async function handleChatResponse(message, models) {
             const username = "<%= userdata.username %>";
            
             console.log("currchatId before save:", currchatId);
-            let aiResponse = [aidata, openai, deepSeek] ? [aidata, openai, deepSeek] : [giminiCompare, openaiCompare, deepSeekCompare];
+            const aiResponseList = !toggle.checked
+                ? [aidata, openai, deepSeek].filter(Boolean)
+                : (compareResponse ? [compareResponse] : []);
             console.log("currchatId:", chatSessionId)
-            await saveChat(userId, username, user.message, aiResponse, user.title, currchatId);
+            await saveChat(userId, username, user.message, aiResponseList, user.title, currchatId);
             
 
         }, 600);

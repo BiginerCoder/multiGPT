@@ -124,7 +124,6 @@ module.exports.api = async (req, res) => {
           userId,
           username,
           chatSessionId,
-          title: title || "New Chat",
           sessionStartTime: new Date(),
           chats: [],
         },
@@ -135,13 +134,34 @@ module.exports.api = async (req, res) => {
       { upsert: true, new: true }
     );
 
+    const existingTitle =
+      dailyChat.chats && dailyChat.chats.length > 0
+        ? dailyChat.chats[0].title
+        : null;
+    const cleanTitle =
+      typeof title === "string" && title.trim().length > 0
+        ? title.trim()
+        : null;
+    const effectiveTitle = cleanTitle || existingTitle || "New Chat";
+
+    if (
+      cleanTitle &&
+      existingTitle &&
+      existingTitle !== cleanTitle &&
+      existingTitle === "New Chat"
+    ) {
+      dailyChat.chats[0].title = cleanTitle;
+    }
+
+    const normalizedResponse = Array.isArray(aiResponse)
+      ? aiResponse.filter(Boolean).join(" ")
+      : aiResponse;
+
     dailyChat.chats.push({
       timestamp: new Date(),
-      title: title || "New Chat",
+      title: effectiveTitle,
       message: userMessage,
-      response: Array.isArray(aiResponse)
-        ? aiResponse.join(" ")   // merge chunks
-        : aiResponse,
+      response: normalizedResponse || "",
     });
 
 
