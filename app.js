@@ -242,8 +242,8 @@ app.get("/api/check-auth", (req, res) => {
 });
 
 
-//app.get("/signup", main.signup);
-//app.post("/signup", main.signupPost);
+app.get("/signup", main.signup);
+app.post("/signup", main.signupPost);
 app.get("/logout", main.logout);
 
 app.get("/chat-history/:id", main.chatHistory);

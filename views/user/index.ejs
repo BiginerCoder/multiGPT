@@ -419,7 +419,6 @@ async function getGiminiStreamResponse(
         return msg;
     }
 }
-
 async function getDeepSeekStreamResponse(context, message, onToken) {
     try {
         const resp = await fetch("/api/deepseek/stream", {
@@ -604,11 +603,13 @@ async function handleChatResponse(message, models) {
         let fullChat = contextChats.slice(0,3).map(chatSet =>
             chatSet.chats.map(chat => `User: ${chat.message}\nai: ${chat.response}\n\n`).join("")
         ).join("");
-        fullChat += RememberingCurrentChat;
         if (fullChat) {
-            fullChat += `# This is for context # Read all user and AI chat history, make 
+            fullChat += `# This is for context # :- Read all user and AI chat history, make 
             relationships between them, and respond considering the current user as the previous user.\n`;
         }
+        fullChat += `#this is current session conversation# :- ${RememberingCurrentChat}, during answer use 
+                    current session conversation and use context if needed.\n`;
+        
 
         user.previousChat = fullChat || "";
         user.message = message;
@@ -629,7 +630,7 @@ async function handleChatResponse(message, models) {
             const loadingHtml = (modelName) => `
                 <div class="ai-chat-area">
                     <h4>${modelName}</h4>
-                    <div class="stream-loading" role="status" aria-label="Loading"></div>
+                    <img src="animation/Animation - 1737272179442.gif" alt="loading img">
                 </div>`;
 
             let chatBoxes = {};

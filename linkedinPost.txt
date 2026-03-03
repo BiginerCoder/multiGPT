@@ -1,0 +1,29 @@
+Built and launched my new AI web application: **MultiGPT Chat**.
+
+It lets users compare responses from multiple AI models in one place and switch between demo mode and real provider APIs with their own keys.
+
+Key features:
+- Multi-model chat support (Gemini, OpenAI, DeepSeek)
+- Side-by-side response comparison
+- Streaming responses for faster, real-time interaction
+- Chat history with session-based organization
+- Add / view / update API keys and models from a dedicated settings page
+- Demo mode for instant testing (no personal API keys required)
+- Auto-switch to real provider endpoints when user API keys are added
+
+How it works:
+- In demo mode, requests use fallback/demo endpoints.
+- When users add their own API keys, the app routes requests to real provider endpoints.
+- Users can return anytime to update model names and API keys.
+- Chats are stored and can be revisited or deleted from history.
+
+Tech stack:
+- Node.js + Express
+- MongoDB + Mongoose
+- EJS frontend
+- Socket.IO for live updates
+
+Live Demo (Render):
+https://your-render-app-url.onrender.com
+
+I would love your feedback on usability, model comparison flow, and feature ideas for v2.

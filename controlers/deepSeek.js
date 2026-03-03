@@ -1,92 +1,106 @@
 const apikey = require("../models/apiKeys");
 
-module.exports.deepseekapi = async (req, res) => {
-  console.log("Entered in deepseekapi (OpenRouter)");
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
+const DEFAULT_OPENROUTER_MODEL = "deepseek/deepseek-v3.2";
+const DEFAULT_DEEPSEEK_MODEL = "deepseek-chat";
 
+async function getDeepSeekProviderConfig(userId) {
+  const saved = await apikey.findOne({ userId }).lean();
+  const userKey = saved?.apiDeepSeekKey?.key?.trim();
+  const userModel = saved?.apiDeepSeekKey?.model?.trim();
+
+  if (userKey) {
+    return {
+      apiKey: userKey,
+      model: userModel || DEFAULT_DEEPSEEK_MODEL,
+      url: DEEPSEEK_URL,
+      isRealProvider: true,
+    };
+  }
+
+  return {
+    apiKey: process.env.OPENROUTER_DEEPSEEK_API_KEY,
+    model: DEFAULT_OPENROUTER_MODEL,
+    url: OPENROUTER_URL,
+    isRealProvider: false,
+  };
+}
+
+function buildHeaders(config) {
+  const headers = {
+    Authorization: `Bearer ${config.apiKey}`,
+    "Content-Type": "application/json",
+  };
+
+  if (!config.isRealProvider) {
+    headers["HTTP-Referer"] = "http://localhost:3001";
+    headers["X-Title"] = "MyChatApp";
+  }
+
+  return headers;
+}
+
+module.exports.deepseekapi = async (req, res) => {
   try {
     const { context, message, isTitle } = req.body;
     const userID = req.session?.userId;
-    // save api in cache for one session and use it for all subsequent requests without fetching from DB every time
-    const saved_api_keys = await apikey.findOne({ userId: userID });
-    // selecting latest active api from last elemtent of array
-    const API_KEY =
-      saved_api_keys?.apiDeepSeekKey?.slice().reverse().find(k => k.isActive)?.key
-      || process.env.OPENROUTER_DEEPSEEK_API_KEY;
+    const providerConfig = await getDeepSeekProviderConfig(userID);
 
-    // Validation
+    if (!providerConfig.apiKey) {
+      return res.status(500).json({
+        success: false,
+        error: "Missing DeepSeek/OpenRouter key",
+      });
+    }
+
     if (!message && !context) {
       return res.status(400).json({
         error: "Missing required fields: message or context",
       });
     }
 
-    // 🔹 Title generation instruction (same as your old code)
     const titlePrompt =
       "Generate only ONE short title (max 6 words) for this conversation. " +
       "Do NOT ask questions. Do NOT add quotes. " +
       "If the message is a simple greeting, return the same greeting.";
 
-    // 🔹 Decide final user prompt
     const finalUserMessage = isTitle ? titlePrompt : message;
+    const systemContext = context ? `Context: ${context}` : `Context: ${message}`;
 
-    // 🔹 Decide system context
-    const systemContext = context
-      ? `Context: ${context}`
-      : `Context: ${message}`;
-
-    const response = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${API_KEY}`, // 🔐 move key to .env
-          "HTTP-Referer": "http://localhost:3001", // change in prod
-          "X-Title": "MyChatApp",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "deepseek/deepseek-r1",
-          messages: [
-            {
-              role: "system",
-              content: systemContext,
-            },
-            {
-              role: "user",
-              content: finalUserMessage,
-            },
-          ],
-          max_tokens: isTitle ? 50 : 1000, // 🔥 small tokens for title
-          temperature: isTitle ? 0.3 : 0.7, // 🔥 more deterministic titles
-        }),
-      }
-    );
+    const response = await fetch(providerConfig.url, {
+      method: "POST",
+      headers: buildHeaders(providerConfig),
+      body: JSON.stringify({
+        model: providerConfig.model,
+        messages: [
+          { role: "system", content: systemContext },
+          { role: "user", content: finalUserMessage },
+        ],
+        max_tokens: isTitle ? 50 : 1000,
+        temperature: isTitle ? 0.3 : 0.7,
+      }),
+    });
 
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("OpenRouter Error:", data);
+      console.error("DeepSeek/OpenRouter Error:", data);
       return res.status(500).json({
-        error: data?.error?.message || "OpenRouter API failed",
+        error: data?.error?.message || "DeepSeek request failed",
       });
     }
 
-    const result =
-      data?.choices?.[0]?.message?.content?.trim() || "No response";
+    const result = data?.choices?.[0]?.message?.content?.trim() || "No response";
+    const cleanResult = isTitle ? result.replace(/["\n]/g, "").trim() : result;
 
-    // 🔹 Clean title output (extra safety)
-    const cleanResult = isTitle
-      ? result.replace(/["\n]/g, "").trim()
-      : result;
-    console.log("DeepSeek OpenRouter Result:", cleanResult);
     return res.status(200).json({
       success: true,
       result: cleanResult,
       isTitle,
     });
-
   } catch (error) {
-    console.error("DeepSeek OpenRouter Error:", error);
+    console.error("DeepSeek API error:", error);
     return res.status(500).json({
       error: "Internal Server Error",
       details: error.message,
@@ -94,40 +108,33 @@ module.exports.deepseekapi = async (req, res) => {
   }
 };
 
-
-
 module.exports.deepseekapiStream = async (req, res) => {
   try {
     const { context, message } = req.body;
+    const userID = req.session?.userId;
+    const providerConfig = await getDeepSeekProviderConfig(userID);
 
-    const upstream = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.OPENROUTER_DEEPSEEK_API_KEY}`,
-          "HTTP-Referer": "http://localhost:3001",
-          "X-Title": "MyChatApp",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "deepseek/deepseek-r1",
-          messages: [
-            {
-              role: "system",
-              content: context ? `Context: ${context}` : `Context: ${message}`,
-            },
-            {
-              role: "user",
-              content: message,
-            },
-          ],
-          max_tokens: 1000,
-          temperature: 0.7,
-          stream: true,
-        }),
-      }
-    );
+    if (!providerConfig.apiKey) {
+      return res.status(500).json({ error: "Missing DeepSeek/OpenRouter key" });
+    }
+
+    const upstream = await fetch(providerConfig.url, {
+      method: "POST",
+      headers: buildHeaders(providerConfig),
+      body: JSON.stringify({
+        model: providerConfig.model,
+        messages: [
+          {
+            role: "system",
+            content: context ? `Context: ${context}` : `Context: ${message}`,
+          },
+          { role: "user", content: message },
+        ],
+        max_tokens: 1000,
+        temperature: 0.7,
+        stream: true,
+      }),
+    });
 
     if (!upstream.ok || !upstream.body) {
       const errText = await upstream.text();
@@ -166,7 +173,6 @@ module.exports.deepseekapiStream = async (req, res) => {
           const token = parsed?.choices?.[0]?.delta?.content || "";
           if (token) {
             res.write(`data: ${JSON.stringify({ token })}\n\n`);
-            await new Promise((r) => setTimeout(r, 10));
           }
         } catch (_) {
           // ignore malformed chunk

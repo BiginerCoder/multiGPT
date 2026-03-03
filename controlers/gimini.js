@@ -10,8 +10,11 @@ module.exports.giminiapi = async (req, res) => {
 
         const saved_api_keys = await apikey.findOne({ userId: userID });
         const API_KEY =
-            saved_api_keys?.apiGiminiKey?.slice().reverse().find(k => k.isActive)?.key
+            saved_api_keys?.apiGiminiKey?.key?.trim()
             || process.env.GIMINI_API_KEY;
+        const MODEL =
+            saved_api_keys?.apiGiminiKey?.model?.trim()
+            || GEMINI_MODEL;
 
         if (!API_KEY) {
             return res.status(500).json({
@@ -54,7 +57,7 @@ module.exports.giminiapi = async (req, res) => {
         };
 
         const response = await fetch(
-            `${GEMINI_BASE_URL}/${GEMINI_MODEL}:generateContent?key=${API_KEY}`,
+            `${GEMINI_BASE_URL}/${MODEL}:generateContent?key=${API_KEY}`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -79,6 +82,7 @@ module.exports.giminiapi = async (req, res) => {
         return res.status(200).json({
             success: true,
             result,
+            response: result,
             isTitle: !!isTitle
         });
     } catch (error) {
@@ -101,8 +105,11 @@ module.exports.giminiapiStream = async (req, res) => {
 
     // ✅ Get active Gemini key or fallback
     const API_KEY =
-      saved_api_keys?.apiGiminiKey?.find(k => k.isActive)?.key
+      saved_api_keys?.apiGiminiKey?.key?.trim()
       || process.env.GIMINI_API_KEY;
+    const MODEL =
+      saved_api_keys?.apiGiminiKey?.model?.trim()
+      || GEMINI_MODEL;
 
     if (!API_KEY) {
       return res.status(500).json({
@@ -134,7 +141,7 @@ module.exports.giminiapiStream = async (req, res) => {
 
     // ✅ Gemini streaming request
     const upstream = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:streamGenerateContent?alt=sse&key=${API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
