@@ -5,16 +5,11 @@ Personal Chat Bot is a multi-provider AI chat app that lets you query several mo
 ## Live Demo
 - https://multigpt-xsz8.onrender.com
 
-## Screenshots
 ### Landing Page
 ![Landing Page](https://github.com/BiginerCoder/multiGPT/blob/bbe3bad75f555d49460a7b516f61edfa64310ac8/public/screenshorts/Screenshot%202026-03-03%20194320.png)
 ### Response Comparison
 ![Response Comparison](https://github.com/user-attachments/assets/9d97e1af-d371-4cf2-8ab6-f95df1065b8b)
 ### Chat History
-![Chat History](https://github.com/user-attachments/assets/ba6f11e7-2fd6-48e8-850d-ab4ac7edf944)
-
-![Multi-API Dashboard](https://github.com/user-attachments/assets/9d97e1af-d371-4cf2-8ab6-f95df1065b8b)
-
 ![Settings Panel](https://github.com/user-attachments/assets/f86b8aa3-b1cf-4f2f-be79-4101dbe05469)
 
 
