@@ -349,11 +349,7 @@ async function getOpenAiStreamResponse(context, message, onToken) {
         return msg;
     }
 }
-async function getGiminiStreamResponse(
-    context,
-    message,
-    onToken
-) {
+async function getGiminiStreamResponse(context, message, onToken) {
     try {
         const response = await fetch("/api/gimini/stream", {
             method: "POST",
@@ -588,6 +584,7 @@ function createChatBox(html, classes){
     return Box
 };
 let RememberingCurrentChat = "";
+let currentChat = "";
 
 function buildCurrentChatSummary(message, responses) {
     return `promt:${message}\nreponses\n` +
@@ -706,51 +703,27 @@ async function handleChatResponse(message, models) {
                 let comparePrompt = `compare this different ai responses in context based on`;
                 userInput.ariaPlaceholder = "compare this different ai responses based on...";
                 console.log("Switch is ON");
-
-                const baseResponses = { gemini: null, openai: null, deepSeek: null };
+                const compareContext = currentChat || fullChat;
+                const compareMessage = `${comparePrompt} ${message}`;
                 if (models[0].checked) {
-                    baseResponses.gemini = await getGiminiResponse(fullChat, message, false);
-                }
-                if (models[1].checked) {
-                    baseResponses.openai = await getOpenAiResponse(fullChat, message, false);
-                }
-                if (models[2].checked) {
-                    baseResponses.deepSeek = await getDeepSeekResponse(fullChat, message, false);
-                }
-
-                currentChat = buildCurrentChatSummary(user.message, baseResponses);
-
-                if (models[0].checked) {
-                    const compareMessage = `${comparePrompt} ${message}`;
-                   
-                    // Create and append chatbox with loading first
                     chatBoxes["Gemini"] = createChatBox(loadingHtml("Gemini"), "ai-chat-box");
                     chatSection.appendChild(chatBoxes["Gemini"]);
-
-                    // Await response
-                    compareResponse = await getGiminiResponse(currentChat, compareMessage, false);
-                    console.log(compareResponse);
-
-                    // Show response in UI
-                    responseChatBox(chatBoxes["Gemini"], formatResponseToHTML(compareResponse), 'Gemini');
+                    const streamUpdater = startStreamingChatBox(chatBoxes["Gemini"], "Gemini");
+                    compareResponse = await getGiminiStreamResponse(compareContext, compareMessage, streamUpdater);
                     if (!user.title && compareResponse) user.title = await getGiminiResponse(null, compareResponse, true);
 
                 } else if (models[1].checked) {
                     chatBoxes["OpenAI"] = createChatBox(loadingHtml("OpenAI"), "ai-chat-box");
                     chatSection.appendChild(chatBoxes["OpenAI"]);
-
-                    compareResponse = await getOpenAiResponse(currentChat, `${comparePrompt} ${message}`, false);
-                    console.log(compareResponse);
-                    responseChatBox(chatBoxes["OpenAI"], formatResponseToHTML(compareResponse), 'ChatGPT');
+                    const streamUpdater = startStreamingChatBox(chatBoxes["OpenAI"], "ChatGPT");
+                    compareResponse = await getOpenAiStreamResponse(compareContext, compareMessage, streamUpdater);
                     if (!user.title && compareResponse) user.title = await getOpenAiResponse(null, compareResponse, true);
 
                 } else if (models[2].checked) {
                     chatBoxes["DeepSeek"] = createChatBox(loadingHtml("DeepSeek"), "ai-chat-box");
                     chatSection.appendChild(chatBoxes["DeepSeek"]);
-
-                    compareResponse = await getDeepSeekResponse(currentChat, `${comparePrompt} ${message}`, false);
-                    console.log(compareResponse);
-                    responseChatBox(chatBoxes["DeepSeek"], formatResponseToHTML(compareResponse), 'DeepSeek');
+                    const streamUpdater = startStreamingChatBox(chatBoxes["DeepSeek"], "DeepSeek");
+                    compareResponse = await getDeepSeekStreamResponse(compareContext, compareMessage, streamUpdater);
                     if (!user.title && compareResponse) user.title = await getDeepSeekResponse(null, compareResponse, true);
                 }
             }
